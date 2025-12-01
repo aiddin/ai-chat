@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat Demo - Web Component</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .controls {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Controls -->
+  <div class="controls">
+    <button onclick="toggleTheme()">Toggle Theme</button>
+    <button onclick="changeAPI()">Change API</button>
+  </div>
+
+  <!-- Import the web component from built dist -->
+  <script type="module">
+    // Import from the dist folder
+    import './dist/index.mjs';
+  </script>
+
+  <!-- Use the web component -->
+  <ai-chat
+    id="chat"
+    api-url="http://localhost:8000"
+    session-id="demo-session"
+    title="AI Chat Demo - Web Component"
+    theme="light">
+  </ai-chat>
+
+  <!-- Event listeners and controls -->
+  <script>
+    const chat = document.getElementById('chat');
+
+    // Listen to events
+    chat.addEventListener('message-sent', (e) => {
+      console.log('✅ Message sent:', e.detail);
+    });
+
+    chat.addEventListener('response-received', (e) => {
+      console.log('✅ Response received:', e.detail);
+    });
+
+    chat.addEventListener('error', (e) => {
+      console.error('❌ Error:', e.detail);
+    });
+
+    // Toggle theme
+    function toggleTheme() {
+      const currentTheme = chat.getAttribute('theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      chat.setAttribute('theme', newTheme);
+      console.log('Theme changed to:', newTheme);
+    }
+
+    // Change API URL (for testing)
+    function changeAPI() {
+      const newUrl = prompt('Enter new API URL:', chat.apiUrl);
+      if (newUrl) {
+        chat.apiUrl = newUrl;
+        console.log('API URL changed to:', newUrl);
+      }
+    }
+
+    // Test programmatic messages
+    window.addTestMessage = () => {
+      chat.initialMessages = [
+        ...chat.initialMessages,
+        {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'This is a programmatically added message!'
+        }
+      ];
+    };
+
+    console.log('==============================================');
+    console.log('AI Chat Web Component Demo');
+    console.log('==============================================');
+    console.log('Try these in the console:');
+    console.log('- toggleTheme() - Switch between light/dark');
+    console.log('- changeAPI() - Change API endpoint');
+    console.log('- chat.apiUrl = "..." - Set API URL');
+    console.log('- chat.theme = "dark" - Set theme');
+    console.log('==============================================');
+  </script>
+</body>
+</html>

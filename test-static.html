@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat - Static Test</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <!-- Import the web component from built dist -->
+  <script type="module">
+    import './dist/index.mjs';
+
+    // Log when component is ready
+    customElements.whenDefined('ai-chat').then(() => {
+      console.log('✅ ai-chat component is defined and ready!');
+      window.componentReady = true;
+    });
+  </script>
+
+  <!-- Use the web component -->
+  <ai-chat
+    id="test-chat"
+    api-url="http://localhost:8000"
+    session-id="test-session"
+    title="Test Chat"
+    theme="light">
+  </ai-chat>
+
+  <script>
+    // Make component accessible for testing
+    window.getChat = () => document.getElementById('test-chat');
+  </script>
+</body>
+</html>

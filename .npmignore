@@ -1,0 +1,27 @@
+# Ignore everything except distribution files
+*
+
+# Include distribution and required files
+!dist/**
+!components/**
+!lib/**
+!app/globals.css
+!package.json
+!README.md
+!LICENSE
+
+# Exclude specific files
+.next/
+node_modules/
+.env*
+*.log
+src-tauri/
+app/
+tsup.config.ts
+tsconfig.json
+next.config.ts
+postcss.config.mjs
+tailwind.config.*
+eslint.config.mjs
+CLAUDE.md
+TAURI_SETUP.md
