@@ -268,26 +268,24 @@ export class AIChat extends LitElement {
     .faq-item {
       font-size: 0.875rem;
       color: #52525b;
-      display: flex;
-      gap: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .faq-item:hover {
+      background-color: #f4f4f5;
+      color: #18181b;
     }
 
     :host([theme="dark"]) .faq-item {
       color: #a1a1aa;
     }
 
-    .faq-number {
-      font-weight: 500;
-      color: #18181b;
-      flex-shrink: 0;
-    }
-
-    :host([theme="dark"]) .faq-number {
-      color: #e4e4e7;
-    }
-
-    .faq-question {
-      flex: 1;
+    :host([theme="dark"]) .faq-item:hover {
+      background-color: #27272a;
+      color: #fafafa;
     }
 
     .loading {
@@ -467,6 +465,17 @@ export class AIChat extends LitElement {
 
   private handleInput(e: Event) {
     this.input = (e.target as HTMLInputElement).value;
+  }
+
+  private handleFAQClick(question: string) {
+    if (this.isLoading) return;
+
+    // Set the input and trigger submit
+    this.input = question;
+
+    // Create a synthetic submit event
+    const submitEvent = new Event('submit', { cancelable: true });
+    this.handleSubmit(submitEvent);
   }
 
   private async handleSubmit(e: Event) {
@@ -671,9 +680,8 @@ export class AIChat extends LitElement {
                     <p class="faq-title">Related FAQs:</p>
                     <ul class="faq-list">
                       ${msg.faqs.map(faq => html`
-                        <li class="faq-item">
-                          <span class="faq-number">${faq["no."]}.</span>
-                          <span class="faq-question">${faq.question}</span>
+                        <li class="faq-item" @click=${() => this.handleFAQClick(faq.question)}>
+                          ${faq.question}
                         </li>
                       `)}
                     </ul>
