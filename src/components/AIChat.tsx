@@ -8,10 +8,21 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Loader2, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export interface FAQ {
+  "no.": string;
+  question: string;
+}
+
+export interface StructuredResponse {
+  response: string;
+  faqs_used?: FAQ[];
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  structuredData?: StructuredResponse;
 }
 
 export interface AIChatProps {
@@ -31,6 +42,31 @@ export interface AIChatProps {
   onResponseReceived?: (message: Message) => void;
   /** Callback when an error occurs */
   onError?: (error: Error) => void;
+}
+
+function FAQList({ faqs }: { faqs: FAQ[] }) {
+  if (!faqs || faqs.length === 0) return null;
+
+  return (
+    <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+        Related FAQs:
+      </p>
+      <ul className="space-y-2">
+        {faqs.map((faq) => (
+          <li
+            key={faq["no."]}
+            className="text-sm text-zinc-600 dark:text-zinc-400 flex gap-2"
+          >
+            <span className="font-medium text-zinc-800 dark:text-zinc-200">
+              {faq["no."]}.
+            </span>
+            <span>{faq.question}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 export function AIChat({
@@ -85,23 +121,42 @@ export function AIChat({
 
       const data = await res.json();
 
+      // Parse the response correctly
+      let responseText: string;
+      let structuredData: StructuredResponse | undefined;
+
+      // Check if data has the expected structure directly
+      if (data.response && typeof data.response === "string") {
+        responseText = data.response;
+        structuredData = {
+          response: data.response,
+          faqs_used: data.faqs_used || [],
+        };
+      } else {
+        // Fallback: display the whole response
+        responseText = "No response from agent";
+        structuredData = undefined;
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.response || "No response from agent",
+        content: responseText,
+        structuredData: structuredData,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
       onResponseReceived?.(assistantMessage);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Backend connection failed:", err);
+      const error = err instanceof Error ? err : new Error('Unknown error');
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Error: ${err.message}\n\nPlease check your API endpoint configuration.`,
+        content: `Error: ${error.message}\n\nPlease check your API endpoint configuration.`,
       };
       setMessages((prev) => [...prev, errorMessage]);
-      onError?.(err);
+      onError?.(error);
     } finally {
       setIsLoading(false);
     }
@@ -150,6 +205,9 @@ export function AIChat({
                 )}
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
+                {message.role === "assistant" && message.structuredData?.faqs_used && (
+                  <FAQList faqs={message.structuredData.faqs_used} />
+                )}
               </div>
             </div>
           ))}

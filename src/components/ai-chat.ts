@@ -1,12 +1,20 @@
 import { LitElement, html, css, PropertyValues } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { classMap } from 'lit/directives/class-map.js';
+
+const VERSION = '0.2.2';
+
+export interface FAQ {
+  "no.": string;
+  question: string;
+}
 
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  faqs?: FAQ[];
 }
 
 /**
@@ -227,6 +235,61 @@ export class AIChat extends LitElement {
       margin: 0;
     }
 
+    .faq-section {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e4e4e7;
+    }
+
+    :host([theme="dark"]) .faq-section {
+      border-top-color: #3f3f46;
+    }
+
+    .faq-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #3f3f46;
+      margin: 0 0 0.5rem 0;
+    }
+
+    :host([theme="dark"]) .faq-title {
+      color: #d4d4d8;
+    }
+
+    .faq-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .faq-item {
+      font-size: 0.875rem;
+      color: #52525b;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    :host([theme="dark"]) .faq-item {
+      color: #a1a1aa;
+    }
+
+    .faq-number {
+      font-weight: 500;
+      color: #18181b;
+      flex-shrink: 0;
+    }
+
+    :host([theme="dark"]) .faq-number {
+      color: #e4e4e7;
+    }
+
+    .faq-question {
+      flex: 1;
+    }
+
     .loading {
       display: flex;
       gap: 1rem;
@@ -318,6 +381,19 @@ export class AIChat extends LitElement {
     .send-icon {
       width: 1.25rem;
       height: 1.25rem;
+    }
+
+    .version-tag {
+      text-align: center;
+      padding: 0.5rem;
+      font-size: 0.75rem;
+      color: #71717a;
+      border-top: 1px solid #e4e4e7;
+    }
+
+    :host([theme="dark"]) .version-tag {
+      color: #a1a1aa;
+      border-top-color: #27272a;
     }
   `;
 
@@ -433,10 +509,28 @@ export class AIChat extends LitElement {
 
       const data = await response.json();
 
+      // Extract the response text and FAQs properly
+      let responseText = 'No response from agent';
+      let faqs: FAQ[] | undefined = undefined;
+
+      if (typeof data === 'string') {
+        responseText = data;
+      } else if (data && typeof data === 'object') {
+        // Handle the server response format: { response: "text", faqs_used: [...] }
+        if (data.response && typeof data.response === 'string') {
+          responseText = data.response;
+          faqs = data.faqs_used || undefined;
+        } else {
+          // Fallback for other formats
+          responseText = data.message || data.answer || JSON.stringify(data);
+        }
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response || 'No response from agent',
+        content: responseText,
+        faqs: faqs,
       };
 
       this.messages = [...this.messages, assistantMessage];
@@ -447,13 +541,13 @@ export class AIChat extends LitElement {
         bubbles: true,
         composed: true,
       }));
-    } catch (err: any) {
+    } catch (err) {
       console.error('Backend connection failed:', err);
 
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Error: ${err.message}\n\nPlease check your API endpoint configuration.`,
+        content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}\n\nPlease check your API endpoint configuration.`,
       };
 
       this.messages = [...this.messages, errorMessage];
@@ -498,6 +592,19 @@ export class AIChat extends LitElement {
               </div>
               <div class="message-content">
                 <p class="message-text">${msg.content}</p>
+                ${msg.role === 'assistant' && msg.faqs && msg.faqs.length > 0 ? html`
+                  <div class="faq-section">
+                    <p class="faq-title">Related FAQs:</p>
+                    <ul class="faq-list">
+                      ${msg.faqs.map(faq => html`
+                        <li class="faq-item">
+                          <span class="faq-number">${faq["no."]}.</span>
+                          <span class="faq-question">${faq.question}</span>
+                        </li>
+                      `)}
+                    </ul>
+                  </div>
+                ` : ''}
               </div>
             </div>
           `)}
@@ -543,6 +650,9 @@ export class AIChat extends LitElement {
           </button>
         </form>
       </div>
+
+      <!-- Version -->
+      <div class="version-tag">v${VERSION}</div>
     `;
   }
 
