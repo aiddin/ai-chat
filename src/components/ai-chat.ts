@@ -513,17 +513,37 @@ export class AIChat extends LitElement {
       let responseText = 'No response from agent';
       let faqs: FAQ[] | undefined = undefined;
 
-      if (typeof data === 'string') {
-        responseText = data;
-      } else if (data && typeof data === 'object') {
-        // Handle the server response format: { response: "text", faqs_used: [...] }
-        if (data.response && typeof data.response === 'string') {
+      if (data && typeof data === 'object' && data.response && typeof data.response === 'string') {
+        // Check if data.response contains stringified JSON
+        const trimmedResponse = data.response.trim();
+        if (trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[')) {
+          try {
+            // Parse the stringified JSON inside response field
+            const innerData = JSON.parse(data.response);
+            if (innerData.response && typeof innerData.response === 'string') {
+              // Extract actual text and FAQs from inner object
+              responseText = innerData.response;
+              faqs = innerData.faqs_used || undefined;
+            } else {
+              // Inner data doesn't have expected format
+              responseText = data.response;
+              faqs = data.faqs_used || undefined;
+            }
+          } catch {
+            // Not valid JSON, use as plain text
+            responseText = data.response;
+            faqs = data.faqs_used || undefined;
+          }
+        } else {
+          // Not JSON, direct text response
           responseText = data.response;
           faqs = data.faqs_used || undefined;
-        } else {
-          // Fallback for other formats
-          responseText = data.message || data.answer || JSON.stringify(data);
         }
+      } else if (typeof data === 'string') {
+        responseText = data;
+      } else if (data && typeof data === 'object') {
+        // Fallback for other formats
+        responseText = data.message || data.answer || JSON.stringify(data);
       }
 
       const assistantMessage: Message = {
