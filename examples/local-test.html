@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat - Local Test</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+  </style>
+
+  <!-- Load component from local build -->
+  <script type="module">
+    import '../dist/index.mjs';
+
+    // Mock API for testing
+    window.mockAPI = true;
+  </script>
+</head>
+<body>
+  <!-- Fullscreen mode -->
+  <ai-chat
+    api-url="http://localhost:8000"
+    session-id="test-session"
+    title="AI Assistant Test"
+    theme="light">
+  </ai-chat>
+
+  <script>
+    // Mock fetch for testing without backend
+    if (window.mockAPI) {
+      const originalFetch = window.fetch;
+      window.fetch = function(url, options) {
+        if (url.includes('/ask')) {
+          const body = JSON.parse(options.body);
+          console.log('Mock API received:', body);
+
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              response: `This is a mock response to: "${body.question}"`,
+              faqs_used: [
+                { "no.": "1", question: "What is this?" },
+                { "no.": "2", question: "How does it work?" }
+              ]
+            })
+          });
+        }
+        return originalFetch.apply(this, arguments);
+      };
+    }
+
+    // Test event listeners
+    const chat = document.querySelector('ai-chat');
+
+    chat.addEventListener('message-sent', (e) => {
+      console.log('✅ Message sent event:', e.detail);
+    });
+
+    chat.addEventListener('response-received', (e) => {
+      console.log('✅ Response received event:', e.detail);
+    });
+
+    chat.addEventListener('error', (e) => {
+      console.error('❌ Error event:', e.detail);
+    });
+
+    console.log('✅ Chat component loaded successfully');
+  </script>
+</body>
+</html>

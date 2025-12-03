@@ -3,50 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chat - CDN Example</title>
+  <title>MySTI</title>
 
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      font-family: system-ui, -apple-system, sans-serif;
+  <!-- Import map for bare module specifiers -->
+  <script type="importmap">
+    {
+      "imports": {
+        "lit": "https://cdn.jsdelivr.net/npm/lit@3.3.1/+esm",
+        "lit/": "https://cdn.jsdelivr.net/npm/lit@3.3.1/",
+        "lit/decorators.js": "https://cdn.jsdelivr.net/npm/lit@3.3.1/decorators.js",
+        "lit/directives/repeat.js": "https://cdn.jsdelivr.net/npm/lit@3.3.1/directives/repeat.js",
+        "lit/directives/class-map.js": "https://cdn.jsdelivr.net/npm/lit@3.3.1/directives/class-map.js",
+        "@lit/reactive-element": "https://cdn.jsdelivr.net/npm/@lit/reactive-element@2.0.4/+esm",
+        "@lit/reactive-element/": "https://cdn.jsdelivr.net/npm/@lit/reactive-element@2.0.4/",
+        "lit-html": "https://cdn.jsdelivr.net/npm/lit-html@3.3.1/+esm",
+        "lit-html/": "https://cdn.jsdelivr.net/npm/lit-html@3.3.1/",
+        "lit-element/lit-element.js": "https://cdn.jsdelivr.net/npm/lit-element@4.3.1/lit-element.js"
+      }
     }
-  </style>
-
-  <!-- Load component in head using CDN -->
-  <script type="module">
-    // For local development, use:
-    import '../dist/index.mjs';
-
-    // For production, use CDN:
-    // import 'https://cdn.jsdelivr.net/npm/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs';
   </script>
+
+  <!-- Tailwind CSS CDN for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- ai-chat web component -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs"></script>
 </head>
-<body>
-  <!-- Component is ready to use -->
+<body class="h-screen bg-zinc-50 dark:bg-black flex flex-col items-center justify-start">
+ 
+  <!-- Simple title -->
+  <header class="w-full py-6 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-center">
+    <h1 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">MySTI</h1>
+  </header>
+ 
+  <!-- AI Chat widget -->
   <ai-chat
-    api-url="http://localhost:8000"
-    session-id="demo-session"
-    title="AI Assistant Demo"
-    theme="light">
-  </ai-chat>
-
-  <!-- You can also configure it via JavaScript -->
-  <script>
-    const chat = document.querySelector('ai-chat');
-
-    // Listen to events
-    chat.addEventListener('message-sent', (e) => {
-      console.log('User sent:', e.detail.content);
-    });
-
-    chat.addEventListener('response-received', (e) => {
-      console.log('Bot replied:', e.detail.content);
-    });
-
-    chat.addEventListener('error', (e) => {
-      console.error('Error:', e.detail);
-    });
-  </script>
+    mode="widget"
+    api-url="http://127.0.0.1:8000"
+    session-id="e3c9f7a1-5b24-4df0-932a-7ac41ef89d55"
+    title="AI Assistant"
+    theme="light"
+  ></ai-chat>
+ 
 </body>
 </html>

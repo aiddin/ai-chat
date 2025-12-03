@@ -68,6 +68,18 @@
     },
     {
       "kind": "javascript-module",
+      "path": "dist/index.js",
+      "declarations": [
+        {
+          "kind": "variable",
+          "name": "faqs",
+          "default": "void 0"
+        }
+      ],
+      "exports": []
+    },
+    {
+      "kind": "javascript-module",
       "path": "examples/angular.component.ts",
       "declarations": [
         {
@@ -158,18 +170,6 @@
     },
     {
       "kind": "javascript-module",
-      "path": "dist/index.js",
-      "declarations": [
-        {
-          "kind": "variable",
-          "name": "faqs",
-          "default": "void 0"
-        }
-      ],
-      "exports": []
-    },
-    {
-      "kind": "javascript-module",
       "path": "lib/utils.ts",
       "declarations": [
         {
@@ -221,13 +221,37 @@
     },
     {
       "kind": "javascript-module",
+      "path": "tests/cdn-examples.spec.ts",
+      "declarations": [],
+      "exports": []
+    },
+    {
+      "kind": "javascript-module",
       "path": "tests/chat.spec.ts",
       "declarations": [],
       "exports": []
     },
     {
       "kind": "javascript-module",
+      "path": "tests/check-widget.spec.ts",
+      "declarations": [],
+      "exports": []
+    },
+    {
+      "kind": "javascript-module",
+      "path": "tests/live-server-test.spec.ts",
+      "declarations": [],
+      "exports": []
+    },
+    {
+      "kind": "javascript-module",
       "path": "tests/web-component.spec.ts",
+      "declarations": [],
+      "exports": []
+    },
+    {
+      "kind": "javascript-module",
+      "path": "tests/widget-visibility.spec.ts",
       "declarations": [],
       "exports": []
     },
