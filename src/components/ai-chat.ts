@@ -508,43 +508,97 @@ export class AIChat extends LitElement {
       }
 
       const data = await response.json();
+      console.log('🔍 Raw API response:', data);
 
       // Extract the response text and FAQs properly
       let responseText = 'No response from agent';
       let faqs: FAQ[] | undefined = undefined;
 
       if (data && typeof data === 'object' && data.response && typeof data.response === 'string') {
+        console.log('📝 data.response type:', typeof data.response);
+        console.log('📝 data.response preview:', data.response.substring(0, 100));
+
         // Check if data.response contains stringified JSON
         const trimmedResponse = data.response.trim();
         if (trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[')) {
+          console.log('🔄 Detected stringified JSON, parsing...');
+
           try {
-            // Parse the stringified JSON inside response field
-            const innerData = JSON.parse(data.response);
-            if (innerData.response && typeof innerData.response === 'string') {
-              // Extract actual text and FAQs from inner object
+            // First attempt: standard JSON.parse
+            let innerData = JSON.parse(data.response);
+            console.log('✅ Parsed inner data with JSON.parse');
+
+            if (innerData && innerData.response && typeof innerData.response === 'string') {
               responseText = innerData.response;
               faqs = innerData.faqs_used || undefined;
+              console.log('✅ Extracted text length:', responseText.length);
+              console.log('✅ Extracted FAQs count:', faqs?.length || 0);
             } else {
-              // Inner data doesn't have expected format
               responseText = data.response;
               faqs = data.faqs_used || undefined;
             }
-          } catch {
-            // Not valid JSON, use as plain text
-            responseText = data.response;
-            faqs = data.faqs_used || undefined;
+          } catch (parseError) {
+            console.warn('⚠️ JSON.parse failed, using regex extraction...', parseError);
+
+            // Backend has malformed JSON - extract response text
+            const responsePattern = /"response"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/s;
+            const responseMatch = data.response.match(responsePattern);
+
+            if (responseMatch) {
+              responseText = responseMatch[1]
+                .replace(/\\n/g, '\n')
+                .replace(/\\t/g, '\t')
+                .replace(/\\r/g, '\r')
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, '\\');
+              console.log('✅ Extracted response text, length:', responseText.length);
+            } else {
+              console.error('❌ Could not extract response');
+              responseText = 'Error: Could not parse response';
+            }
+
+            // Extract FAQs array
+            const faqsPattern = /"faqs_used"\s*:\s*(\[[^\]]*\])/s;
+            const faqsMatch = data.response.match(faqsPattern);
+
+            if (faqsMatch) {
+              try {
+                faqs = JSON.parse(faqsMatch[1]);
+                console.log('✅ Extracted FAQs, count:', faqs?.length || 0);
+              } catch {
+                console.log('⚠️ Could not parse FAQs, trying multiline...');
+                // FAQs might span multiple lines
+                const faqsMultiPattern = /"faqs_used"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+                const faqsMultiMatch = data.response.match(faqsMultiPattern);
+                if (faqsMultiMatch) {
+                  try {
+                    faqs = JSON.parse(faqsMultiMatch[1]);
+                    console.log('✅ Extracted multi-line FAQs, count:', faqs?.length || 0);
+                  } catch {
+                    faqs = undefined;
+                  }
+                }
+              }
+            }
           }
         } else {
           // Not JSON, direct text response
+          console.log('📄 Direct text response (not JSON)');
           responseText = data.response;
           faqs = data.faqs_used || undefined;
         }
       } else if (typeof data === 'string') {
+        console.log('📄 Response is a plain string');
         responseText = data;
       } else if (data && typeof data === 'object') {
         // Fallback for other formats
-        responseText = data.message || data.answer || JSON.stringify(data);
+        console.warn('⚠️ Unexpected format, using fallback');
+        responseText = data.message || data.answer || 'Error: Unexpected response format';
       }
+
+      console.log('🎯 Final responseText length:', responseText.length);
+      console.log('🎯 Final responseText preview:', responseText.substring(0, 100));
+      console.log('🎯 Final FAQs:', faqs);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
