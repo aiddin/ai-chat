@@ -30,7 +30,8 @@
     },
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
-    "incremental": true
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
   },
   "include": [
     "next-env.d.ts",

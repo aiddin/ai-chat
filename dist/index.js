@@ -53,6 +53,12 @@ exports.AIChat = class AIChat extends lit.LitElement {
   handleInput(e) {
     this.input = e.target.value;
   }
+  handleFAQClick(question) {
+    if (this.isLoading) return;
+    this.input = question;
+    const submitEvent = new Event("submit", { cancelable: true });
+    this.handleSubmit(submitEvent);
+  }
   async handleSubmit(e) {
     e.preventDefault();
     if (!this.input.trim() || this.isLoading || !this.apiUrl) return;
@@ -84,18 +90,74 @@ exports.AIChat = class AIChat extends lit.LitElement {
         throw new Error(`Backend error: ${response.status} ${errorText}`);
       }
       const data = await response.json();
+      console.log("\u{1F50D} Raw API response:", data);
       let responseText = "No response from agent";
       let faqs = void 0;
-      if (typeof data === "string") {
-        responseText = data;
-      } else if (data && typeof data === "object") {
-        if (data.response && typeof data.response === "string") {
+      if (data && typeof data === "object" && data.response && typeof data.response === "string") {
+        console.log("\u{1F4DD} data.response type:", typeof data.response);
+        console.log("\u{1F4DD} data.response preview:", data.response.substring(0, 100));
+        const trimmedResponse = data.response.trim();
+        if (trimmedResponse.startsWith("{") || trimmedResponse.startsWith("[")) {
+          console.log("\u{1F504} Detected stringified JSON, parsing...");
+          try {
+            let innerData = JSON.parse(data.response);
+            console.log("\u2705 Parsed inner data with JSON.parse");
+            if (innerData && innerData.response && typeof innerData.response === "string") {
+              responseText = innerData.response;
+              faqs = innerData.faqs_used || void 0;
+              console.log("\u2705 Extracted text length:", responseText.length);
+              console.log("\u2705 Extracted FAQs count:", faqs?.length || 0);
+            } else {
+              responseText = data.response;
+              faqs = data.faqs_used || void 0;
+            }
+          } catch (parseError) {
+            console.warn("\u26A0\uFE0F JSON.parse failed, using regex extraction...", parseError);
+            const responsePattern = /"response"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/s;
+            const responseMatch = data.response.match(responsePattern);
+            if (responseMatch) {
+              responseText = responseMatch[1].replace(/\\n/g, "\n").replace(/\\t/g, "	").replace(/\\r/g, "\r").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+              console.log("\u2705 Extracted response text, length:", responseText.length);
+            } else {
+              console.error("\u274C Could not extract response");
+              responseText = "Error: Could not parse response";
+            }
+            const faqsPattern = /"faqs_used"\s*:\s*(\[[^\]]*\])/s;
+            const faqsMatch = data.response.match(faqsPattern);
+            if (faqsMatch) {
+              try {
+                faqs = JSON.parse(faqsMatch[1]);
+                console.log("\u2705 Extracted FAQs, count:", faqs?.length || 0);
+              } catch {
+                console.log("\u26A0\uFE0F Could not parse FAQs, trying multiline...");
+                const faqsMultiPattern = /"faqs_used"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+                const faqsMultiMatch = data.response.match(faqsMultiPattern);
+                if (faqsMultiMatch) {
+                  try {
+                    faqs = JSON.parse(faqsMultiMatch[1]);
+                    console.log("\u2705 Extracted multi-line FAQs, count:", faqs?.length || 0);
+                  } catch {
+                    faqs = void 0;
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          console.log("\u{1F4C4} Direct text response (not JSON)");
           responseText = data.response;
           faqs = data.faqs_used || void 0;
-        } else {
-          responseText = data.message || data.answer || JSON.stringify(data);
         }
+      } else if (typeof data === "string") {
+        console.log("\u{1F4C4} Response is a plain string");
+        responseText = data;
+      } else if (data && typeof data === "object") {
+        console.warn("\u26A0\uFE0F Unexpected format, using fallback");
+        responseText = data.message || data.answer || "Error: Unexpected response format";
       }
+      console.log("\u{1F3AF} Final responseText length:", responseText.length);
+      console.log("\u{1F3AF} Final responseText preview:", responseText.substring(0, 100));
+      console.log("\u{1F3AF} Final FAQs:", faqs);
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -161,9 +223,8 @@ Please check your API endpoint configuration.`
                     <p class="faq-title">Related FAQs:</p>
                     <ul class="faq-list">
                       ${msg.faqs.map((faq) => lit.html`
-                        <li class="faq-item">
-                          <span class="faq-number">${faq["no."]}.</span>
-                          <span class="faq-question">${faq.question}</span>
+                        <li class="faq-item" @click=${() => this.handleFAQClick(faq.question)}>
+                          ${faq.question}
                         </li>
                       `)}
                     </ul>
@@ -484,26 +545,24 @@ exports.AIChat.styles = lit.css`
     .faq-item {
       font-size: 0.875rem;
       color: #52525b;
-      display: flex;
-      gap: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .faq-item:hover {
+      background-color: #f4f4f5;
+      color: #18181b;
     }
 
     :host([theme="dark"]) .faq-item {
       color: #a1a1aa;
     }
 
-    .faq-number {
-      font-weight: 500;
-      color: #18181b;
-      flex-shrink: 0;
-    }
-
-    :host([theme="dark"]) .faq-number {
-      color: #e4e4e7;
-    }
-
-    .faq-question {
-      flex: 1;
+    :host([theme="dark"]) .faq-item:hover {
+      background-color: #27272a;
+      color: #fafafa;
     }
 
     .loading {
