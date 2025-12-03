@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { classMap } from 'lit/directives/class-map.js';
 
-const VERSION = '0.2.2';
+const VERSION = '0.2.4';
 
 export interface FAQ {
   "no.": string;
@@ -155,6 +155,9 @@ export class AIChat extends LitElement {
       flex: 1;
       overflow-y: auto;
       padding: 1.5rem 1rem;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
     }
 
     .messages-container {
@@ -201,10 +204,17 @@ export class AIChat extends LitElement {
       flex-shrink: 0;
       font-weight: 500;
       font-size: 0.875rem;
+      overflow: hidden;
     }
 
     :host([theme="dark"]) .avatar {
       background: #3f3f46;
+    }
+
+    .avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .message-content {
@@ -401,6 +411,8 @@ export class AIChat extends LitElement {
   declare theme: 'light' | 'dark';
   declare mode: 'fullscreen' | 'widget';
   declare initialMessages: Message[];
+  declare botAvatarUrl: string;
+  declare backgroundImageUrl: string;
 
   @state()
   private declare messages: Message[];
@@ -423,6 +435,8 @@ export class AIChat extends LitElement {
     theme: { type: String },
     mode: { type: String, reflect: true },
     initialMessages: { type: Array },
+    botAvatarUrl: { type: String, attribute: 'bot-avatar-url' },
+    backgroundImageUrl: { type: String, attribute: 'background-image-url' },
   };
 
   constructor() {
@@ -433,6 +447,8 @@ export class AIChat extends LitElement {
     this.theme = 'light';
     this.mode = 'fullscreen';
     this.initialMessages = [];
+    this.botAvatarUrl = '';
+    this.backgroundImageUrl = '';
     this.messages = [];
     this.input = '';
     this.isLoading = false;
@@ -656,7 +672,7 @@ export class AIChat extends LitElement {
       </div>
 
       <!-- Messages Area -->
-      <div class="messages-area">
+      <div class="messages-area" style="${this.backgroundImageUrl ? `background-image: url('${this.backgroundImageUrl}')` : ''}">
         <div class="messages-container">
           ${this.messages.length === 0 ? html`
             <div class="empty-state">
@@ -671,7 +687,11 @@ export class AIChat extends LitElement {
               assistant: msg.role === 'assistant'
             })}>
               <div class="avatar">
-                ${msg.role === 'user' ? 'U' : 'AI'}
+                ${msg.role === 'user'
+                  ? 'U'
+                  : this.botAvatarUrl
+                    ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />`
+                    : 'AI'}
               </div>
               <div class="message-content">
                 <p class="message-text">${msg.content}</p>
@@ -693,7 +713,11 @@ export class AIChat extends LitElement {
 
           ${this.isLoading ? html`
             <div class="loading">
-              <div class="avatar">AI</div>
+              <div class="avatar">
+                ${this.botAvatarUrl
+                  ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />`
+                  : 'AI'}
+              </div>
               <div class="message-content">
                 <div class="spinner"></div>
               </div>

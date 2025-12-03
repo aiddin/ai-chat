@@ -22,6 +22,8 @@ export default function Home() {
         title="AI Assistant"
         theme="light"
         mode="widget"
+        bot-avatar-url="/assets/chat-bot-icon.png"
+        background-image-url="/assets/chat-bot-bg.png"
       />
     </div>
   );
