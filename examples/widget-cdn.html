@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Website with AI Chat Widget</title>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      margin: 0 0 0.5rem 0;
+    }
+
+    .content {
+      background: #f9fafb;
+      padding: 2rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .feature {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature h3 {
+      margin-top: 0;
+      color: #667eea;
+    }
+  </style>
+
+  <!-- Load chat widget in head - async for better performance -->
+  <script type="module" async>
+    // For local development:
+    import '../dist/index.mjs';
+
+    // For production with CDN:
+    // import 'https://cdn.jsdelivr.net/npm/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs';
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Welcome to My Website</h1>
+    <p>This is a demo showing the AI chat widget integrated into a regular website</p>
+  </header>
+
+  <div class="content">
+    <h2>About Our Service</h2>
+    <p>
+      We provide amazing services to our customers. Notice the chat widget in the
+      bottom-right corner? Click it to start a conversation with our AI assistant!
+    </p>
+
+    <div class="features">
+      <div class="feature">
+        <h3>🚀 Fast Setup</h3>
+        <p>Get started in minutes with our simple integration</p>
+      </div>
+      <div class="feature">
+        <h3>💬 24/7 Support</h3>
+        <p>AI-powered assistance available around the clock</p>
+      </div>
+      <div class="feature">
+        <h3>🎨 Customizable</h3>
+        <p>Match your brand with custom themes and avatars</p>
+      </div>
+      <div class="feature">
+        <h3>📱 Mobile Ready</h3>
+        <p>Works perfectly on all devices and screen sizes</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <h2>How It Works</h2>
+    <ol>
+      <li>Add the component script to your HTML head</li>
+      <li>Place the &lt;ai-chat&gt; element with mode="widget"</li>
+      <li>Configure your API endpoint</li>
+      <li>Done! Your chat widget is live</li>
+    </ol>
+  </div>
+
+  <!-- Chat widget - appears as floating button -->
+  <ai-chat
+    mode="widget"
+    api-url="http://localhost:8000"
+    session-id="widget-demo"
+    title="Customer Support"
+    theme="dark"
+    bot-avatar-url="">
+  </ai-chat>
+
+  <script>
+    // Optional: Configure the widget via JavaScript
+    const chat = document.querySelector('ai-chat');
+
+    // Set initial greeting message
+    chat.initialMessages = [
+      {
+        id: '1',
+        role: 'assistant',
+        content: 'Hi! 👋 How can I help you today?',
+        faqs: [
+          { "no.": "1", question: "Tell me about your services" },
+          { "no.": "2", question: "What are your pricing plans?" },
+          { "no.": "3", question: "How do I get started?" }
+        ]
+      }
+    ];
+
+    // Track user interactions
+    chat.addEventListener('message-sent', (e) => {
+      console.log('User message:', e.detail.content);
+      // Send to analytics, etc.
+    });
+  </script>
+</body>
+</html>

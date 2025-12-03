@@ -36,6 +36,8 @@ declare class AIChat extends LitElement {
     theme: 'light' | 'dark';
     mode: 'fullscreen' | 'widget';
     initialMessages: Message[];
+    botAvatarUrl: string;
+    backgroundImageUrl: string;
     private messages;
     private input;
     private isLoading;
@@ -63,6 +65,14 @@ declare class AIChat extends LitElement {
         };
         initialMessages: {
             type: ArrayConstructor;
+        };
+        botAvatarUrl: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        backgroundImageUrl: {
+            type: StringConstructor;
+            attribute: string;
         };
     };
     constructor();

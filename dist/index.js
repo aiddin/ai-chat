@@ -15,7 +15,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-var VERSION = "0.2.2";
+var VERSION = "0.2.4";
 exports.AIChat = class AIChat extends lit.LitElement {
   constructor() {
     super();
@@ -25,6 +25,8 @@ exports.AIChat = class AIChat extends lit.LitElement {
     this.theme = "light";
     this.mode = "fullscreen";
     this.initialMessages = [];
+    this.botAvatarUrl = "";
+    this.backgroundImageUrl = "";
     this.messages = [];
     this.input = "";
     this.isLoading = false;
@@ -199,7 +201,7 @@ Please check your API endpoint configuration.`
       </div>
 
       <!-- Messages Area -->
-      <div class="messages-area">
+      <div class="messages-area" style="${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}')` : ""}">
         <div class="messages-container">
           ${this.messages.length === 0 ? lit.html`
             <div class="empty-state">
@@ -214,7 +216,7 @@ Please check your API endpoint configuration.`
       assistant: msg.role === "assistant"
     })}>
               <div class="avatar">
-                ${msg.role === "user" ? "U" : "AI"}
+                ${msg.role === "user" ? "U" : this.botAvatarUrl ? lit.html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />` : "AI"}
               </div>
               <div class="message-content">
                 <p class="message-text">${msg.content}</p>
@@ -236,7 +238,9 @@ Please check your API endpoint configuration.`
 
           ${this.isLoading ? lit.html`
             <div class="loading">
-              <div class="avatar">AI</div>
+              <div class="avatar">
+                ${this.botAvatarUrl ? lit.html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />` : "AI"}
+              </div>
               <div class="message-content">
                 <div class="spinner"></div>
               </div>
@@ -432,6 +436,23 @@ exports.AIChat.styles = lit.css`
       flex: 1;
       overflow-y: auto;
       padding: 1.5rem 1rem;
+      position: relative;
+    }
+
+    .messages-area::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: var(--background-image-url);
+      background-size: 200px auto 60%;
+      background-position: center center;
+      background-repeat: no-repeat;
+      opacity: 0.5;
+      pointer-events: none;
+      z-index: 0;
     }
 
     .messages-container {
@@ -440,6 +461,8 @@ exports.AIChat.styles = lit.css`
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
+      position: relative;
+      z-index: 1;
     }
 
     .empty-state {
@@ -478,10 +501,17 @@ exports.AIChat.styles = lit.css`
       flex-shrink: 0;
       font-weight: 500;
       font-size: 0.875rem;
+      overflow: hidden;
     }
 
     :host([theme="dark"]) .avatar {
       background: #3f3f46;
+    }
+
+    .avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .message-content {
@@ -677,7 +707,9 @@ exports.AIChat.properties = {
   chatTitle: { type: String, attribute: "title" },
   theme: { type: String },
   mode: { type: String, reflect: true },
-  initialMessages: { type: Array }
+  initialMessages: { type: Array },
+  botAvatarUrl: { type: String, attribute: "bot-avatar-url" },
+  backgroundImageUrl: { type: String, attribute: "background-image-url" }
 };
 __decorateClass([
   decorators_js.state()

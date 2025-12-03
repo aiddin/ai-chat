@@ -68,18 +68,6 @@
     },
     {
       "kind": "javascript-module",
-      "path": "dist/index.js",
-      "declarations": [
-        {
-          "kind": "variable",
-          "name": "faqs",
-          "default": "void 0"
-        }
-      ],
-      "exports": []
-    },
-    {
-      "kind": "javascript-module",
       "path": "examples/angular.component.ts",
       "declarations": [
         {
@@ -167,6 +155,18 @@
           }
         }
       ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "dist/index.js",
+      "declarations": [
+        {
+          "kind": "variable",
+          "name": "faqs",
+          "default": "void 0"
+        }
+      ],
+      "exports": []
     },
     {
       "kind": "javascript-module",
@@ -563,6 +563,26 @@
             },
             {
               "kind": "field",
+              "name": "botAvatarUrl",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "attribute": "bot-avatar-url"
+            },
+            {
+              "kind": "field",
+              "name": "backgroundImageUrl",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "attribute": "background-image-url"
+            },
+            {
+              "kind": "field",
               "name": "messages",
               "type": {
                 "text": "Message[]"
@@ -731,6 +751,22 @@
               },
               "default": "[]",
               "fieldName": "initialMessages"
+            },
+            {
+              "name": "bot-avatar-url",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "fieldName": "botAvatarUrl"
+            },
+            {
+              "name": "background-image-url",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "fieldName": "backgroundImageUrl"
             }
           ],
           "superclass": {

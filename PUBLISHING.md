@@ -16,14 +16,14 @@ Edit `package.json`:
 
 ```json
 {
-  "name": "@your-npm-username/ai-chat",  // Change to your username
-  "version": "0.1.0",
-  "description": "Your description here",
+  "name": "@a.izzuddin/ai-chat",
+  "version": "0.2.4",
+  "description": "A framework-agnostic AI chat web component. Works with React, Vue, Svelte, Angular, and vanilla JavaScript.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/ai-chat"  // Your repo
+    "url": "git+https://github.com/aiddin/ai-chat.git"
   },
-  "author": "Your Name <your.email@example.com>",
+  "author": "a.izzuddin",
   "license": "MIT"
 }
 ```
@@ -131,21 +131,21 @@ jobs:
 ```
 
 Add your npm token as a GitHub secret:
-1. Generate token at https://www.npmjs.com/settings/your-username/tokens
+1. Generate token at https://www.npmjs.com/settings/a.izzuddin/tokens
 2. Add as `NPM_TOKEN` in your repo's Settings > Secrets
 
 ## Post-Publishing
 
 ### 1. Verify Package
 
-Visit: `https://www.npmjs.com/package/@your-username/ai-chat`
+Visit: `https://www.npmjs.com/package/@a.izzuddin/ai-chat`
 
 ### 2. Test Installation
 
 In a new project:
 
 ```bash
-npm install @your-username/ai-chat
+npm install @a.izzuddin/ai-chat
 ```
 
 ### 3. Update Documentation
@@ -153,8 +153,8 @@ npm install @your-username/ai-chat
 Add badges to your README:
 
 ```markdown
-[![npm version](https://badge.fury.io/js/@your-username%2Fai-chat.svg)](https://www.npmjs.com/package/@your-username/ai-chat)
-[![npm downloads](https://img.shields.io/npm/dm/@your-username/ai-chat.svg)](https://www.npmjs.com/package/@your-username/ai-chat)
+[![npm version](https://badge.fury.io/js/@a.izzuddin%2Fai-chat.svg)](https://www.npmjs.com/package/@a.izzuddin/ai-chat)
+[![npm downloads](https://img.shields.io/npm/dm/@a.izzuddin/ai-chat.svg)](https://www.npmjs.com/package/@a.izzuddin/ai-chat)
 ```
 
 ## Package Structure
@@ -162,7 +162,7 @@ Add badges to your README:
 Your published package will include:
 
 ```
-@your-username/ai-chat/
+@a.izzuddin/ai-chat/
 ├── dist/
 │   ├── index.js          # CommonJS build
 │   ├── index.mjs         # ES Module build
@@ -189,14 +189,14 @@ Follow [Semantic Versioning](https://semver.org/):
 **Warning**: Only unpublish within 72 hours of publishing!
 
 ```bash
-npm unpublish @your-username/ai-chat@0.1.0  # Specific version
-npm unpublish @your-username/ai-chat --force  # All versions (not recommended)
+npm unpublish @a.izzuddin/ai-chat@0.1.0  # Specific version
+npm unpublish @a.izzuddin/ai-chat --force  # All versions (not recommended)
 ```
 
 After 72 hours, you can only deprecate:
 
 ```bash
-npm deprecate @your-username/ai-chat@0.1.0 "Use version 0.2.0 instead"
+npm deprecate @a.izzuddin/ai-chat@0.1.0 "Use version 0.2.0 instead"
 ```
 
 ## Troubleshooting

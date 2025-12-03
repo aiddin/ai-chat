@@ -288,6 +288,6 @@ MIT © [Your Name]
 
 ## Support
 
-- 📖 [Documentation](https://github.com/a.izzuddin/ai-chat#readme)
-- 🐛 [Issue Tracker](https://github.com/a.izzuddin/ai-chat/issues)
-- 💬 [Discussions](https://github.com/a.izzuddin/ai-chat/discussions)
+- 📖 [Documentation](https://github.com/aiddin/ai-chat#readme)
+- 🐛 [Issue Tracker](https://github.com/aiddin/ai-chat/issues)
+- 💬 [Discussions](https://github.com/aiddin/ai-chat/discussions)

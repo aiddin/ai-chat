@@ -131,7 +131,7 @@ const apiUrl = import.meta.env.VITE_API_URL;
 
 ```html
 <script type="module">
-  import 'https://unpkg.com/@a.izzuddin/ai-chat';
+  import 'https://unpkg.com/@a.izzuddin/ai-chat@0.2.4';
 </script>
 
 <ai-chat api-url="..." session-id="..."></ai-chat>
@@ -220,10 +220,11 @@ npm install /path/to/a.izzuddin-ai-chat-0.1.0.tgz
 
 ```json
 {
-  "name": "@your-npm-username/ai-chat",
-  "version": "0.1.0",
+  "name": "@a.izzuddin/ai-chat",
+  "version": "0.2.4",
   "repository": {
-    "url": "https://github.com/your-username/ai-chat"
+    "type": "git",
+    "url": "git+https://github.com/aiddin/ai-chat.git"
   }
 }
 ```
@@ -241,14 +242,14 @@ npm publish --access public
 Users can install:
 
 ```bash
-npm install @your-username/ai-chat
+npm install @a.izzuddin/ai-chat
 ```
 
 Or use via CDN:
 
 ```html
 <script type="module">
-  import 'https://unpkg.com/@your-username/ai-chat';
+  import 'https://unpkg.com/@a.izzuddin/ai-chat@0.2.4';
 </script>
 ```
 

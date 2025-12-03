@@ -1,6 +1,6 @@
 {
   "name": "@a.izzuddin/ai-chat",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "A framework-agnostic AI chat web component. Works with React, Vue, Svelte, Angular, and vanilla JavaScript.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -37,6 +37,10 @@
     "type": "git",
     "url": "git+https://github.com/aiddin/ai-chat.git"
   },
+  "bugs": {
+    "url": "https://github.com/aiddin/ai-chat/issues"
+  },
+  "homepage": "https://github.com/aiddin/ai-chat#readme",
   "scripts": {
     "dev": "next dev",
     "dev:demo": "next dev",

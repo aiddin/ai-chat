@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat - Embed Code Generator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 800px;
+      width: 100%;
+      padding: 3rem;
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #374151;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .code-output {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 1.5rem;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      margin-top: 2rem;
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .code-output pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .copy-button {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .copy-button:hover {
+      background: #5568d3;
+    }
+
+    .copy-button:active {
+      transform: scale(0.95);
+    }
+
+    .copy-button.copied {
+      background: #10b981;
+    }
+
+    .cdn-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .cdn-card {
+      background: #f9fafb;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 2px solid #e5e7eb;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .cdn-card:hover {
+      border-color: #667eea;
+      background: #eff6ff;
+    }
+
+    .cdn-card.selected {
+      border-color: #667eea;
+      background: #eff6ff;
+    }
+
+    .cdn-card h3 {
+      font-size: 1rem;
+      margin-bottom: 0.25rem;
+      color: #667eea;
+    }
+
+    .cdn-card p {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    .section {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 2px solid #e5e7eb;
+    }
+
+    .section h2 {
+      color: #374151;
+      margin-bottom: 1rem;
+      font-size: 1.5rem;
+    }
+
+    .note {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 1rem;
+      margin-top: 1rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 AI Chat Embed Code Generator</h1>
+    <p class="subtitle">Generate custom embed code for your website in seconds</p>
+
+    <div class="form-group">
+      <label>CDN Provider</label>
+      <div class="cdn-options">
+        <div class="cdn-card selected" data-cdn="jsdelivr">
+          <h3>jsDelivr</h3>
+          <p>Fast, reliable (recommended)</p>
+        </div>
+        <div class="cdn-card" data-cdn="unpkg">
+          <h3>unpkg</h3>
+          <p>Simple, automatic</p>
+        </div>
+        <div class="cdn-card" data-cdn="esm">
+          <h3>esm.sh</h3>
+          <p>ES modules CDN</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="apiUrl">API URL *</label>
+      <input type="url" id="apiUrl" placeholder="https://your-api.com" value="https://your-api.com">
+    </div>
+
+    <div class="form-group">
+      <label for="sessionId">Session ID</label>
+      <input type="text" id="sessionId" placeholder="user-123" value="user-123">
+    </div>
+
+    <div class="form-group">
+      <label for="title">Chat Title</label>
+      <input type="text" id="title" placeholder="AI Assistant" value="AI Assistant">
+    </div>
+
+    <div class="form-group">
+      <label for="mode">Display Mode</label>
+      <select id="mode">
+        <option value="fullscreen">Fullscreen (dedicated chat page)</option>
+        <option value="widget">Widget (floating button)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="theme">Theme</label>
+      <select id="theme">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="botAvatar">Bot Avatar URL (optional)</label>
+      <input type="url" id="botAvatar" placeholder="https://example.com/bot-avatar.png">
+    </div>
+
+    <div class="form-group">
+      <label for="backgroundImage">Background Image URL (optional)</label>
+      <input type="url" id="backgroundImage" placeholder="https://example.com/pattern.svg">
+    </div>
+
+    <div class="section">
+      <h2>📋 Your Embed Code</h2>
+      <div class="code-output">
+        <button class="copy-button" onclick="copyCode()">Copy</button>
+        <pre id="embedCode"></pre>
+      </div>
+      <div class="note">
+        <strong>💡 Note:</strong> Replace <code>YOUR_API_URL</code> with your actual API endpoint. The API should respond to POST requests at <code>/ask</code> endpoint.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const cdnUrls = {
+      jsdelivr: 'https://cdn.jsdelivr.net/npm/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs',
+      unpkg: 'https://unpkg.com/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs',
+      esm: 'https://esm.sh/@a.izzuddin/ai-chat@0.2.4'
+    };
+
+    let selectedCdn = 'jsdelivr';
+
+    // CDN selection
+    document.querySelectorAll('.cdn-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.cdn-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedCdn = card.dataset.cdn;
+        generateCode();
+      });
+    });
+
+    // Input listeners
+    ['apiUrl', 'sessionId', 'title', 'mode', 'theme', 'botAvatar', 'backgroundImage'].forEach(id => {
+      document.getElementById(id).addEventListener('input', generateCode);
+    });
+
+    function generateCode() {
+      const apiUrl = document.getElementById('apiUrl').value || 'YOUR_API_URL';
+      const sessionId = document.getElementById('sessionId').value || 'user-123';
+      const title = document.getElementById('title').value || 'AI Assistant';
+      const mode = document.getElementById('mode').value;
+      const theme = document.getElementById('theme').value;
+      const botAvatar = document.getElementById('botAvatar').value;
+      const backgroundImage = document.getElementById('backgroundImage').value;
+
+      const cdnUrl = cdnUrls[selectedCdn];
+
+      let attributes = `  api-url="${apiUrl}"\n`;
+      attributes += `  session-id="${sessionId}"\n`;
+      attributes += `  title="${title}"`;
+
+      if (mode !== 'fullscreen') {
+        attributes += `\n  mode="${mode}"`;
+      }
+
+      if (theme !== 'light') {
+        attributes += `\n  theme="${theme}"`;
+      }
+
+      if (botAvatar) {
+        attributes += `\n  bot-avatar-url="${botAvatar}"`;
+      }
+
+      if (backgroundImage) {
+        attributes += `\n  background-image-url="${backgroundImage}"`;
+      }
+
+      const embedCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  ${mode === 'fullscreen' ? '<style>body { margin: 0; height: 100vh; }</style>' : ''}
+
+  <!-- Load AI Chat Component -->
+  <script type="module" src="${cdnUrl}"></script>
+</head>
+<body>
+  ${mode === 'widget' ? '<!-- Your page content here -->\n  <h1>My Website</h1>\n  <p>Your content...</p>\n\n  ' : ''}<!-- AI Chat Component -->
+  <ai-chat
+${attributes}>
+  </ai-chat>
+</body>
+</html>`;
+
+      document.getElementById('embedCode').textContent = embedCode;
+    }
+
+    function copyCode() {
+      const code = document.getElementById('embedCode').textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        const button = document.querySelector('.copy-button');
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.classList.add('copied');
+
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    // Generate initial code
+    generateCode();
+  </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat - CDN Example</title>
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+  </style>
+
+  <!-- Load component in head using CDN -->
+  <script type="module">
+    // For local development, use:
+    import '../dist/index.mjs';
+
+    // For production, use CDN:
+    // import 'https://cdn.jsdelivr.net/npm/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs';
+  </script>
+</head>
+<body>
+  <!-- Component is ready to use -->
+  <ai-chat
+    api-url="http://localhost:8000"
+    session-id="demo-session"
+    title="AI Assistant Demo"
+    theme="light">
+  </ai-chat>
+
+  <!-- You can also configure it via JavaScript -->
+  <script>
+    const chat = document.querySelector('ai-chat');
+
+    // Listen to events
+    chat.addEventListener('message-sent', (e) => {
+      console.log('User sent:', e.detail.content);
+    });
+
+    chat.addEventListener('response-received', (e) => {
+      console.log('Bot replied:', e.detail.content);
+    });
+
+    chat.addEventListener('error', (e) => {
+      console.error('Error:', e.detail);
+    });
+  </script>
+</body>
+</html>

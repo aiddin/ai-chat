@@ -1,0 +1,83 @@
+═══════════════════════════════════════════════════════════
+  AI Chat Widget - CDN Embed Code
+  No build required • Works everywhere • Just copy & paste
+═══════════════════════════════════════════════════════════
+
+🔥 FULLSCREEN MODE (Dedicated Chat Page)
+─────────────────────────────────────────────────────────
+
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs"></script>
+  <style>body { margin: 0; height: 100vh; }</style>
+</head>
+<body>
+  <ai-chat api-url="YOUR_API_URL" session-id="user-123" title="AI Assistant"></ai-chat>
+</body>
+</html>
+
+
+💬 WIDGET MODE (Floating Chat Button)
+─────────────────────────────────────────────────────────
+
+<script type="module" src="https://cdn.jsdelivr.net/npm/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs"></script>
+<ai-chat mode="widget" api-url="YOUR_API_URL" session-id="user-123" title="Support"></ai-chat>
+
+
+🎨 CUSTOM BRANDING
+─────────────────────────────────────────────────────────
+
+<script type="module" src="https://cdn.jsdelivr.net/npm/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs"></script>
+<ai-chat
+  mode="widget"
+  api-url="YOUR_API_URL"
+  session-id="user-123"
+  title="Customer Support"
+  theme="dark"
+  bot-avatar-url="https://your-domain.com/bot-avatar.png"
+  background-image-url="https://your-domain.com/pattern.svg">
+</ai-chat>
+
+
+📦 CDN PROVIDERS
+─────────────────────────────────────────────────────────
+
+jsDelivr:  https://cdn.jsdelivr.net/npm/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs
+unpkg:     https://unpkg.com/@a.izzuddin/ai-chat@0.2.4/dist/index.mjs
+esm.sh:    https://esm.sh/@a.izzuddin/ai-chat@0.2.4
+
+
+🔧 AVAILABLE ATTRIBUTES
+─────────────────────────────────────────────────────────
+
+api-url              (required) Your API endpoint
+session-id           Session identifier (default: "default-session")
+title                Chat title (default: "My AI Agent")
+mode                 "fullscreen" or "widget" (default: "fullscreen")
+theme                "light" or "dark" (default: "light")
+bot-avatar-url       URL for custom bot avatar
+background-image-url URL for background pattern
+
+
+🔌 BACKEND API ENDPOINT
+─────────────────────────────────────────────────────────
+
+POST /ask
+
+Request:  { "session_id": "string", "question": "string" }
+Response: { "response": "string", "faqs_used": [] }
+
+
+📚 MORE INFO
+─────────────────────────────────────────────────────────
+
+Documentation: https://github.com/aiddin/ai-chat
+NPM Package:   https://www.npmjs.com/package/@a.izzuddin/ai-chat
+Embed Guide:   See EMBED.md
+Generator:     Open embed.html in browser
+
+
+═══════════════════════════════════════════════════════════
+  Built with Lit • Framework Agnostic • MIT License
+═══════════════════════════════════════════════════════════

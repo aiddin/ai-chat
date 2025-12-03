@@ -166,10 +166,10 @@ export class AIChat extends LitElement {
       right: 0;
       bottom: 0;
       background-image: var(--background-image-url);
-      background-size: 300px auto;
+      background-size: 200px auto 60%;
       background-position: center center;
       background-repeat: no-repeat;
-      opacity: 0.15;
+      opacity: 0.5;
       pointer-events: none;
       z-index: 0;
     }
