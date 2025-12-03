@@ -155,9 +155,23 @@ export class AIChat extends LitElement {
       flex: 1;
       overflow-y: auto;
       padding: 1.5rem 1rem;
-      background-size: cover;
-      background-position: center;
+      position: relative;
+    }
+
+    .messages-area::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: var(--background-image-url);
+      background-size: 300px auto;
+      background-position: center center;
       background-repeat: no-repeat;
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
     }
 
     .messages-container {
@@ -166,6 +180,8 @@ export class AIChat extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
+      position: relative;
+      z-index: 1;
     }
 
     .empty-state {
@@ -672,7 +688,7 @@ export class AIChat extends LitElement {
       </div>
 
       <!-- Messages Area -->
-      <div class="messages-area" style="${this.backgroundImageUrl ? `background-image: url('${this.backgroundImageUrl}')` : ''}">
+      <div class="messages-area" style="${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}')` : ''}">
         <div class="messages-container">
           ${this.messages.length === 0 ? html`
             <div class="empty-state">
