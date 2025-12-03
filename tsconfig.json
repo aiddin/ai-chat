@@ -29,7 +29,8 @@
       ]
     },
     "experimentalDecorators": true,
-    "useDefineForClassFields": false
+    "useDefineForClassFields": false,
+    "incremental": true
   },
   "include": [
     "next-env.d.ts",

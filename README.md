@@ -274,7 +274,7 @@ Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTIN
 
 ## 📄 License
 
-MIT © [Your Name]
+MIT © a.izzuddin
 
 ## 🔗 Links
 
