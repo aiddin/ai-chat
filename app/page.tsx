@@ -24,6 +24,10 @@ export default function Home() {
         mode="widget"
         bot-avatar-url="/assets/chat-bot-icon.png"
         background-image-url="/assets/chat-bot-bg.png"
+        primary-color="#3681D3"
+        primary-color-hover="#3457C7"
+        user-message-bg="#D6E4FF"
+        bot-message-bg="#F5F5F5"
       />
     </div>
   );
