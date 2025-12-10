@@ -686,6 +686,26 @@
             },
             {
               "kind": "field",
+              "name": "welcomeMessage",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'How can I help you today?'",
+              "attribute": "welcome-message"
+            },
+            {
+              "kind": "field",
+              "name": "welcomeSubtitle",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "attribute": "welcome-subtitle"
+            },
+            {
+              "kind": "field",
               "name": "messages",
               "type": {
                 "text": "Message[]"
@@ -961,6 +981,22 @@
               },
               "default": "'#F5F5F5'",
               "fieldName": "botMessageBg"
+            },
+            {
+              "name": "welcome-message",
+              "type": {
+                "text": "string"
+              },
+              "default": "'How can I help you today?'",
+              "fieldName": "welcomeMessage"
+            },
+            {
+              "name": "welcome-subtitle",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "fieldName": "welcomeSubtitle"
             }
           ],
           "superclass": {

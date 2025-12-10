@@ -14,6 +14,7 @@ A modern, customizable chat widget built with Lit web components. Features a cle
 - 📝 **List Formatting** - Automatic rendering of bulleted and numbered lists
 - 💡 **Suggested Questions** - Clickable follow-up questions for better UX
 - 🔗 **Related FAQs** - Display related FAQ references
+- 👋 **Customizable Welcome Message** - Set custom greeting with optional subtitle
 
 ## Quick Start
 
@@ -120,6 +121,17 @@ import '@a.izzuddin/ai-chat';
 </ai-chat>
 ```
 
+#### Custom Welcome Message
+```html
+<ai-chat
+  api-url="https://api.example.com"
+  session-id="user-123"
+  title="AI Assistant"
+  welcome-message="Hello! How may I assist you?"
+  welcome-subtitle="Ask me anything about our services">
+</ai-chat>
+```
+
 ### Dark Mode
 ```html
 <ai-chat
@@ -147,6 +159,8 @@ import '@a.izzuddin/ai-chat';
 | `bot-message-bg` | string | '#F5F5F5' | Bot message background |
 | `bot-avatar-url` | string | '' | Custom bot avatar image |
 | `background-image-url` | string | '' | Chat background image |
+| `welcome-message` | string | 'How can I help you today?' | Initial welcome message shown when chat is empty |
+| `welcome-subtitle` | string | '' | Optional subtitle text shown below welcome message |
 
 ## API Integration
 

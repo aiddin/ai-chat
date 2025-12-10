@@ -32,6 +32,8 @@ var AIChat = class extends LitElement {
     this.primaryColorHover = "#3457C7";
     this.userMessageBg = "#D6E4FF";
     this.botMessageBg = "#F5F5F5";
+    this.welcomeMessage = "How can I help you today?";
+    this.welcomeSubtitle = "";
     this.messages = [];
     this.input = "";
     this.isLoading = false;
@@ -306,7 +308,15 @@ Please check your API endpoint configuration.`
         <div class="messages-container">
           ${this.messages.length === 0 ? html`
             <div class="empty-state">
-              <p>How can I help you today?</p>
+              <div class="empty-state-avatar">
+                ${this.botAvatarUrl ? html`<img src="${this.botAvatarUrl}" alt="Bot" class="empty-state-avatar-image" />` : html`<svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>`}
+              </div>
+              <div class="empty-state-content">
+                <p class="empty-state-message">${this.welcomeMessage}</p>
+                ${this.welcomeSubtitle ? html`<p class="empty-state-subtitle">${this.welcomeSubtitle}</p>` : ""}
+              </div>
             </div>
           ` : ""}
 
@@ -806,18 +816,74 @@ AIChat.styles = css`
 
     .empty-state {
       text-align: center;
-      color: #9ca3af;
       margin-top: 5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
     }
 
     :host([theme="dark"]) .empty-state {
       color: #a1a1aa;
     }
 
-    .empty-state p {
-      font-size: 1.5rem;
-      font-weight: 500;
+    .empty-state-avatar {
+      width: 5rem;
+      height: 5rem;
+      border-radius: 50%;
+      background: #E5E7EB;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    :host([theme="dark"]) .empty-state-avatar {
+      background: #3f3f46;
+    }
+
+    .empty-state-avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .empty-state-avatar svg {
+      width: 3rem;
+      height: 3rem;
+      color: #9ca3af;
+    }
+
+    :host([theme="dark"]) .empty-state-avatar svg {
+      color: #6b7280;
+    }
+
+    .empty-state-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .empty-state-message {
+      font-size: 1.25rem;
+      font-weight: 600;
       margin: 0;
+      color: #374151;
+    }
+
+    :host([theme="dark"]) .empty-state-message {
+      color: #f3f4f6;
+    }
+
+    .empty-state-subtitle {
+      font-size: 0.9375rem;
+      margin: 0;
+      color: #6b7280;
+      max-width: 24rem;
+    }
+
+    :host([theme="dark"]) .empty-state-subtitle {
+      color: #9ca3af;
     }
 
     .message {
@@ -1112,7 +1178,9 @@ AIChat.properties = {
   primaryColor: { type: String, attribute: "primary-color" },
   primaryColorHover: { type: String, attribute: "primary-color-hover" },
   userMessageBg: { type: String, attribute: "user-message-bg" },
-  botMessageBg: { type: String, attribute: "bot-message-bg" }
+  botMessageBg: { type: String, attribute: "bot-message-bg" },
+  welcomeMessage: { type: String, attribute: "welcome-message" },
+  welcomeSubtitle: { type: String, attribute: "welcome-subtitle" }
 };
 __decorateClass([
   state()

@@ -67,6 +67,8 @@ declare class AIChat extends LitElement {
     primaryColorHover: string;
     userMessageBg: string;
     botMessageBg: string;
+    welcomeMessage: string;
+    welcomeSubtitle: string;
     private messages;
     private input;
     private isLoading;
@@ -124,6 +126,14 @@ declare class AIChat extends LitElement {
             attribute: string;
         };
         botMessageBg: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        welcomeMessage: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        welcomeSubtitle: {
             type: StringConstructor;
             attribute: string;
         };
