@@ -11,6 +11,7 @@ interface Message {
     role: 'user' | 'assistant';
     content: string;
     faqs?: FAQ[];
+    suggestedQuestions?: string[];
 }
 /**
  * AI Chat Web Component
@@ -21,10 +22,32 @@ interface Message {
  *
  * @example
  * ```html
+ * <!-- Basic usage -->
  * <ai-chat
  *   api-url="https://api.example.com"
  *   session-id="user-123"
  *   title="My AI Assistant">
+ * </ai-chat>
+ *
+ * <!-- Widget mode with custom size -->
+ * <ai-chat
+ *   api-url="https://api.example.com"
+ *   session-id="user-123"
+ *   title="My AI Assistant"
+ *   mode="widget"
+ *   widget-width="400px"
+ *   widget-height="650px">
+ * </ai-chat>
+ *
+ * <!-- Custom theme colors -->
+ * <ai-chat
+ *   api-url="https://api.example.com"
+ *   session-id="user-123"
+ *   title="My AI Assistant"
+ *   primary-color="#10B981"
+ *   primary-color-hover="#059669"
+ *   user-message-bg="#D1FAE5"
+ *   bot-message-bg="#F3F4F6">
  * </ai-chat>
  * ```
  */
@@ -38,6 +61,12 @@ declare class AIChat extends LitElement {
     initialMessages: Message[];
     botAvatarUrl: string;
     backgroundImageUrl: string;
+    widgetWidth: string;
+    widgetHeight: string;
+    primaryColor: string;
+    primaryColorHover: string;
+    userMessageBg: string;
+    botMessageBg: string;
     private messages;
     private input;
     private isLoading;
@@ -74,9 +103,34 @@ declare class AIChat extends LitElement {
             type: StringConstructor;
             attribute: string;
         };
+        widgetWidth: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        widgetHeight: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        primaryColor: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        primaryColorHover: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        userMessageBg: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        botMessageBg: {
+            type: StringConstructor;
+            attribute: string;
+        };
     };
     constructor();
     private toggleWidget;
+    private lightenColor;
     connectedCallback(): void;
     updated(changedProperties: PropertyValues): void;
     private scrollToBottom;
@@ -92,4 +146,4 @@ declare global {
     }
 }
 
-export { AIChat, type Message };
+export { AIChat, type FAQ, type Message };

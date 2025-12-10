@@ -11,24 +11,61 @@ A modern, customizable chat widget built with Lit web components. Features a cle
 - 🔧 **Easy Integration** - Simple HTML attributes for configuration
 - ⚡ **Built with Lit** - Fast, lightweight web component
 - 🎯 **TypeScript Support** - Full type safety
+- 📝 **List Formatting** - Automatic rendering of bulleted and numbered lists
+- 💡 **Suggested Questions** - Clickable follow-up questions for better UX
+- 🔗 **Related FAQs** - Display related FAQ references
 
 ## Quick Start
 
 ### Installation
 
 ```bash
-npm install
-npm run dev
+npm install @a.izzuddin/ai-chat
 ```
 
 ### Basic Usage
 
+**HTML:**
 ```html
+<script type="module">
+  import '@a.izzuddin/ai-chat';
+</script>
+
 <ai-chat
   api-url="https://your-api-endpoint.com"
   session-id="user-123"
   title="AI Assistant">
 </ai-chat>
+```
+
+**React:**
+```jsx
+import '@a.izzuddin/ai-chat';
+
+function App() {
+  return (
+    <ai-chat
+      api-url="https://your-api-endpoint.com"
+      session-id="user-123"
+      title="AI Assistant"
+    />
+  );
+}
+```
+
+**Vue:**
+```vue
+<template>
+  <ai-chat
+    api-url="https://your-api-endpoint.com"
+    session-id="user-123"
+    title="AI Assistant">
+  </ai-chat>
+</template>
+
+<script setup>
+import '@a.izzuddin/ai-chat';
+</script>
 ```
 
 ## Configuration
@@ -127,14 +164,50 @@ Expected response format:
 ```json
 {
   "response": "string",
-  "faqs_used": [
+  "faq_used": [
     {
       "no.": "1",
-      "question": "Related question?"
+      "question": "What is MySTI?"
     }
+  ],
+  "suggested_follow_ups": [
+    "What are the main objectives of the program?",
+    "How can companies apply?",
+    "Who is eligible for the MySTI logo?"
   ]
 }
 ```
+
+**Supported field variations:**
+- `faq_used` or `faqs_used` for related FAQs
+- `suggested_follow_ups` or `suggested_questions` for clickable follow-up questions
+
+### Response Behavior
+
+- **Related FAQs** - Displayed as non-clickable text references
+- **Suggested Questions** - Displayed as clickable buttons that send the question when clicked
+- **List Formatting** - Messages support automatic list rendering:
+  - Unordered lists: Lines starting with `-`, `*`, or `•`
+  - Ordered lists: Lines starting with `1.`, `2.`, etc.
+
+### List Formatting Example
+
+Your API can return text with lists:
+
+```
+MySTI is a government initiative. Key objectives include:
+
+1. Stimulating local industry growth
+2. Driving technology-based economic growth
+3. Creating job opportunities
+
+Key features:
+- Platform for applicants
+- Database of approved goods
+- Reference for procurement
+```
+
+This will be automatically rendered as proper HTML lists.
 
 ## Events
 

@@ -2,8 +2,9 @@ import { LitElement, html, css, PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { classMap } from 'lit/directives/class-map.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
-const VERSION = '0.2.4';
+const VERSION = '0.2.6';
 
 export interface FAQ {
   "no.": string;
@@ -15,6 +16,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   faqs?: FAQ[];
+  suggestedQuestions?: string[];
 }
 
 /**
@@ -249,7 +251,7 @@ export class AIChat extends LitElement {
 
       .faq-item {
         font-size: 0.8125rem;
-        padding: 0.375rem;
+        padding: 0;
       }
 
       .input-area {
@@ -510,11 +512,32 @@ export class AIChat extends LitElement {
     .message-text {
       white-space: pre-wrap;
       margin: 0;
+      word-wrap: break-word;
+    }
+
+    .message-text ul,
+    .message-text ol {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+      white-space: normal;
+    }
+
+    .message-text li {
+      margin: 0.25rem 0;
+      white-space: normal;
+    }
+
+    .message-text ul {
+      list-style-type: disc;
+    }
+
+    .message-text ol {
+      list-style-type: decimal;
     }
 
     .faq-section {
-      margin-top: 1rem;
-      padding-top: 1rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
       border-top: 1px solid #d1d5db;
     }
 
@@ -526,7 +549,7 @@ export class AIChat extends LitElement {
       font-size: 0.875rem;
       font-weight: 600;
       color: var(--primary-color, #3681D3);
-      margin: 0 0 0.5rem 0;
+      margin: 0 0 0.375rem 0;
     }
 
     :host([theme="dark"]) .faq-title {
@@ -539,13 +562,13 @@ export class AIChat extends LitElement {
       margin: 0;
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.375rem;
     }
 
     .faq-item {
       font-size: 0.875rem;
       color: var(--primary-color, #3681D3);
-      padding: 0.5rem 0.75rem;
+      padding: 0;
       border-radius: 0.5rem;
       cursor: pointer;
       transition: background-color 0.2s, color 0.2s;
@@ -566,6 +589,19 @@ export class AIChat extends LitElement {
       background-color: #1e293b;
       color: #93C5FD;
       border-color: #3f3f46;
+    }
+
+    .faq-item-static {
+      font-size: 0.875rem;
+      color: #6B7280;
+      padding: 0;
+      border-radius: 0.5rem;
+      cursor: default;
+      border: 1px solid transparent;
+    }
+
+    :host([theme="dark"]) .faq-item-static {
+      color: #9CA3AF;
     }
 
     .loading {
@@ -778,6 +814,75 @@ export class AIChat extends LitElement {
     return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
   }
 
+  private formatMessageContent(content: string): string {
+    // Escape HTML to prevent XSS
+    const escapeHtml = (text: string) => {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
+    // First, split inline numbered lists (1. 2. 3. pattern)
+    let processedContent = content.replace(/(\d+\.\s+[^0-9]+?)(?=\s+\d+\.\s+|\s*$)/g, '$1\n');
+
+    // Split inline bullet lists (- pattern)
+    processedContent = processedContent.replace(/(-\s+[^-]+?)(?=\s+-\s+|\s*$)/g, '$1\n');
+
+    // Split content by lines
+    const lines = processedContent.split('\n');
+    let formattedContent = '';
+    let inList = false;
+    let listType: 'ul' | 'ol' | null = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+
+      // Check for unordered list (-, *, •)
+      const unorderedMatch = trimmedLine.match(/^[-*•]\s+(.+)$/);
+      // Check for ordered list (1., 2., etc.)
+      const orderedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
+
+      if (unorderedMatch) {
+        if (!inList || listType !== 'ul') {
+          if (inList) formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
+          formattedContent += '<ul>';
+          inList = true;
+          listType = 'ul';
+        }
+        formattedContent += `<li>${escapeHtml(unorderedMatch[1])}</li>`;
+      } else if (orderedMatch) {
+        if (!inList || listType !== 'ol') {
+          if (inList) formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
+          formattedContent += '<ol>';
+          inList = true;
+          listType = 'ol';
+        }
+        formattedContent += `<li>${escapeHtml(orderedMatch[1])}</li>`;
+      } else {
+        // Not a list item
+        if (inList) {
+          formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
+          inList = false;
+          listType = null;
+        }
+        // Add regular line
+        if (trimmedLine === '') {
+          formattedContent += '<br>';
+        } else {
+          formattedContent += escapeHtml(line) + '\n';
+        }
+      }
+    }
+
+    // Close any open list
+    if (inList) {
+      formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
+    }
+
+    return formattedContent;
+  }
+
   connectedCallback() {
     super.connectedCallback();
     if (this.initialMessages && this.initialMessages.length > 0) {
@@ -854,9 +959,10 @@ export class AIChat extends LitElement {
       const data = await response.json();
       console.log('🔍 Raw API response:', data);
 
-      // Extract the response text and FAQs properly
+      // Extract the response text, FAQs, and suggested questions
       let responseText = 'No response from agent';
       let faqs: FAQ[] | undefined = undefined;
+      let suggestedQuestions: string[] | undefined = undefined;
 
       if (data && typeof data === 'object' && data.response && typeof data.response === 'string') {
         console.log('📝 data.response type:', typeof data.response);
@@ -874,12 +980,15 @@ export class AIChat extends LitElement {
 
             if (innerData && innerData.response && typeof innerData.response === 'string') {
               responseText = innerData.response;
-              faqs = innerData.faqs_used || undefined;
+              faqs = innerData.faq_used || innerData.faqs_used || undefined;
+              suggestedQuestions = innerData.suggested_follow_ups || innerData.suggested_questions || undefined;
               console.log('✅ Extracted text length:', responseText.length);
               console.log('✅ Extracted FAQs count:', faqs?.length || 0);
+              console.log('✅ Extracted suggested questions count:', suggestedQuestions?.length || 0);
             } else {
               responseText = data.response;
-              faqs = data.faqs_used || undefined;
+              faqs = data.faq_used || data.faqs_used || undefined;
+              suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || undefined;
             }
           } catch (parseError) {
             console.warn('⚠️ JSON.parse failed, using regex extraction...', parseError);
@@ -901,8 +1010,8 @@ export class AIChat extends LitElement {
               responseText = 'Error: Could not parse response';
             }
 
-            // Extract FAQs array
-            const faqsPattern = /"faqs_used"\s*:\s*(\[[^\]]*\])/s;
+            // Extract FAQs array (support both faq_used and faqs_used)
+            const faqsPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[^\]]*\])/s;
             const faqsMatch = data.response.match(faqsPattern);
 
             if (faqsMatch) {
@@ -912,7 +1021,7 @@ export class AIChat extends LitElement {
               } catch {
                 console.log('⚠️ Could not parse FAQs, trying multiline...');
                 // FAQs might span multiple lines
-                const faqsMultiPattern = /"faqs_used"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+                const faqsMultiPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
                 const faqsMultiMatch = data.response.match(faqsMultiPattern);
                 if (faqsMultiMatch) {
                   try {
@@ -924,12 +1033,36 @@ export class AIChat extends LitElement {
                 }
               }
             }
+
+            // Extract suggested questions array
+            const suggestedPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[^\]]*\])/s;
+            const suggestedMatch = data.response.match(suggestedPattern);
+
+            if (suggestedMatch) {
+              try {
+                suggestedQuestions = JSON.parse(suggestedMatch[1]);
+                console.log('✅ Extracted suggested questions, count:', suggestedQuestions?.length || 0);
+              } catch {
+                console.log('⚠️ Could not parse suggested questions, trying multiline...');
+                const suggestedMultiPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+                const suggestedMultiMatch = data.response.match(suggestedMultiPattern);
+                if (suggestedMultiMatch) {
+                  try {
+                    suggestedQuestions = JSON.parse(suggestedMultiMatch[1]);
+                    console.log('✅ Extracted multi-line suggested questions, count:', suggestedQuestions?.length || 0);
+                  } catch {
+                    suggestedQuestions = undefined;
+                  }
+                }
+              }
+            }
           }
         } else {
           // Not JSON, direct text response
           console.log('📄 Direct text response (not JSON)');
           responseText = data.response;
-          faqs = data.faqs_used || undefined;
+          faqs = data.faq_used || data.faqs_used || undefined;
+          suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || undefined;
         }
       } else if (typeof data === 'string') {
         console.log('📄 Response is a plain string');
@@ -938,17 +1071,21 @@ export class AIChat extends LitElement {
         // Fallback for other formats
         console.warn('⚠️ Unexpected format, using fallback');
         responseText = data.message || data.answer || 'Error: Unexpected response format';
+        faqs = data.faq_used || data.faqs_used || undefined;
+        suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || undefined;
       }
 
       console.log('🎯 Final responseText length:', responseText.length);
       console.log('🎯 Final responseText preview:', responseText.substring(0, 100));
       console.log('🎯 Final FAQs:', faqs);
+      console.log('🎯 Final suggested questions:', suggestedQuestions);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: responseText,
         faqs: faqs,
+        suggestedQuestions: suggestedQuestions,
       };
 
       this.messages = [...this.messages, assistantMessage];
@@ -1022,14 +1159,26 @@ export class AIChat extends LitElement {
                     : 'AI'}
               </div>
               <div class="message-content">
-                <p class="message-text">${msg.content}</p>
+                <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
                 ${msg.role === 'assistant' && msg.faqs && msg.faqs.length > 0 ? html`
                   <div class="faq-section">
                     <p class="faq-title">Related FAQs:</p>
                     <ul class="faq-list">
                       ${msg.faqs.map(faq => html`
-                        <li class="faq-item" @click=${() => this.handleFAQClick(faq.question)}>
+                        <li class="faq-item-static">
                           ${faq.question}
+                        </li>
+                      `)}
+                    </ul>
+                  </div>
+                ` : ''}
+                ${msg.role === 'assistant' && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? html`
+                  <div class="faq-section">
+                    <p class="faq-title">Suggested Questions:</p>
+                    <ul class="faq-list">
+                      ${msg.suggestedQuestions.map(question => html`
+                        <li class="faq-item" @click=${() => this.handleFAQClick(question)}>
+                          ${question}
                         </li>
                       `)}
                     </ul>

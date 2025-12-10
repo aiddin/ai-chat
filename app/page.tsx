@@ -6,7 +6,7 @@ import "@/src/components/ai-chat";
 
 export default function Home() {
   const chatRef = useRef<any>(null);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiUrl =  "http://43.217.183.120:8000";
 
   return (
     <div style={{ minHeight: '100vh', padding: '2rem', background: '#f5f5f5' }}>

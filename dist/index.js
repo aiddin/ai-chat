@@ -15,7 +15,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-var VERSION = "0.2.4";
+var VERSION = "0.2.6";
 exports.AIChat = class AIChat extends lit.LitElement {
   constructor() {
     super();
@@ -27,6 +27,12 @@ exports.AIChat = class AIChat extends lit.LitElement {
     this.initialMessages = [];
     this.botAvatarUrl = "";
     this.backgroundImageUrl = "";
+    this.widgetWidth = "380px";
+    this.widgetHeight = "600px";
+    this.primaryColor = "#3681D3";
+    this.primaryColorHover = "#3457C7";
+    this.userMessageBg = "#D6E4FF";
+    this.botMessageBg = "#F5F5F5";
     this.messages = [];
     this.input = "";
     this.isLoading = false;
@@ -34,6 +40,16 @@ exports.AIChat = class AIChat extends lit.LitElement {
   }
   toggleWidget() {
     this.isOpen = !this.isOpen;
+  }
+  lightenColor(hex, percent = 15) {
+    hex = hex.replace("#", "");
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const newR = Math.min(255, Math.round(r + (255 - r) * (percent / 100)));
+    const newG = Math.min(255, Math.round(g + (255 - g) * (percent / 100)));
+    const newB = Math.min(255, Math.round(b + (255 - b) * (percent / 100)));
+    return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
   }
   connectedCallback() {
     super.connectedCallback();
@@ -95,6 +111,7 @@ exports.AIChat = class AIChat extends lit.LitElement {
       console.log("\u{1F50D} Raw API response:", data);
       let responseText = "No response from agent";
       let faqs = void 0;
+      let suggestedQuestions = void 0;
       if (data && typeof data === "object" && data.response && typeof data.response === "string") {
         console.log("\u{1F4DD} data.response type:", typeof data.response);
         console.log("\u{1F4DD} data.response preview:", data.response.substring(0, 100));
@@ -106,12 +123,15 @@ exports.AIChat = class AIChat extends lit.LitElement {
             console.log("\u2705 Parsed inner data with JSON.parse");
             if (innerData && innerData.response && typeof innerData.response === "string") {
               responseText = innerData.response;
-              faqs = innerData.faqs_used || void 0;
+              faqs = innerData.faq_used || innerData.faqs_used || void 0;
+              suggestedQuestions = innerData.suggested_follow_ups || innerData.suggested_questions || void 0;
               console.log("\u2705 Extracted text length:", responseText.length);
               console.log("\u2705 Extracted FAQs count:", faqs?.length || 0);
+              console.log("\u2705 Extracted suggested questions count:", suggestedQuestions?.length || 0);
             } else {
               responseText = data.response;
-              faqs = data.faqs_used || void 0;
+              faqs = data.faq_used || data.faqs_used || void 0;
+              suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
             }
           } catch (parseError) {
             console.warn("\u26A0\uFE0F JSON.parse failed, using regex extraction...", parseError);
@@ -124,7 +144,7 @@ exports.AIChat = class AIChat extends lit.LitElement {
               console.error("\u274C Could not extract response");
               responseText = "Error: Could not parse response";
             }
-            const faqsPattern = /"faqs_used"\s*:\s*(\[[^\]]*\])/s;
+            const faqsPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[^\]]*\])/s;
             const faqsMatch = data.response.match(faqsPattern);
             if (faqsMatch) {
               try {
@@ -132,7 +152,7 @@ exports.AIChat = class AIChat extends lit.LitElement {
                 console.log("\u2705 Extracted FAQs, count:", faqs?.length || 0);
               } catch {
                 console.log("\u26A0\uFE0F Could not parse FAQs, trying multiline...");
-                const faqsMultiPattern = /"faqs_used"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+                const faqsMultiPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
                 const faqsMultiMatch = data.response.match(faqsMultiPattern);
                 if (faqsMultiMatch) {
                   try {
@@ -144,11 +164,32 @@ exports.AIChat = class AIChat extends lit.LitElement {
                 }
               }
             }
+            const suggestedPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[^\]]*\])/s;
+            const suggestedMatch = data.response.match(suggestedPattern);
+            if (suggestedMatch) {
+              try {
+                suggestedQuestions = JSON.parse(suggestedMatch[1]);
+                console.log("\u2705 Extracted suggested questions, count:", suggestedQuestions?.length || 0);
+              } catch {
+                console.log("\u26A0\uFE0F Could not parse suggested questions, trying multiline...");
+                const suggestedMultiPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+                const suggestedMultiMatch = data.response.match(suggestedMultiPattern);
+                if (suggestedMultiMatch) {
+                  try {
+                    suggestedQuestions = JSON.parse(suggestedMultiMatch[1]);
+                    console.log("\u2705 Extracted multi-line suggested questions, count:", suggestedQuestions?.length || 0);
+                  } catch {
+                    suggestedQuestions = void 0;
+                  }
+                }
+              }
+            }
           }
         } else {
           console.log("\u{1F4C4} Direct text response (not JSON)");
           responseText = data.response;
-          faqs = data.faqs_used || void 0;
+          faqs = data.faq_used || data.faqs_used || void 0;
+          suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
         }
       } else if (typeof data === "string") {
         console.log("\u{1F4C4} Response is a plain string");
@@ -156,15 +197,19 @@ exports.AIChat = class AIChat extends lit.LitElement {
       } else if (data && typeof data === "object") {
         console.warn("\u26A0\uFE0F Unexpected format, using fallback");
         responseText = data.message || data.answer || "Error: Unexpected response format";
+        faqs = data.faq_used || data.faqs_used || void 0;
+        suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
       }
       console.log("\u{1F3AF} Final responseText length:", responseText.length);
       console.log("\u{1F3AF} Final responseText preview:", responseText.substring(0, 100));
       console.log("\u{1F3AF} Final FAQs:", faqs);
+      console.log("\u{1F3AF} Final suggested questions:", suggestedQuestions);
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: responseText,
-        faqs
+        faqs,
+        suggestedQuestions
       };
       this.messages = [...this.messages, assistantMessage];
       this.dispatchEvent(new CustomEvent("response-received", {
@@ -192,16 +237,22 @@ Please check your API endpoint configuration.`
     }
   }
   renderChatUI() {
+    const primaryColorLight = this.lightenColor(this.primaryColor, 15);
     return lit.html`
       <!-- Header -->
-      <div class="header">
+      <div class="header" style="--primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover};">
         <div class="header-content">
+          <div class="header-avatar">
+            ${this.botAvatarUrl ? lit.html`<img src="${this.botAvatarUrl}" alt="Bot" class="header-avatar-image" />` : lit.html`<svg viewBox="0 0 24 24" fill="none" stroke="${this.primaryColor}" stroke-width="2" style="width: 1.5rem; height: 1.5rem;">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>`}
+          </div>
           <h1 class="title">${this.chatTitle}</h1>
         </div>
       </div>
 
       <!-- Messages Area -->
-      <div class="messages-area" style="${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}')` : ""}">
+      <div class="messages-area" style="--user-message-bg: ${this.userMessageBg}; --bot-message-bg: ${this.botMessageBg}; --primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover}; ${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}');` : ""}">
         <div class="messages-container">
           ${this.messages.length === 0 ? lit.html`
             <div class="empty-state">
@@ -232,6 +283,18 @@ Please check your API endpoint configuration.`
                     </ul>
                   </div>
                 ` : ""}
+                ${msg.role === "assistant" && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? lit.html`
+                  <div class="faq-section">
+                    <p class="faq-title">Suggested Questions:</p>
+                    <ul class="faq-list">
+                      ${msg.suggestedQuestions.map((question) => lit.html`
+                        <li class="faq-item" @click=${() => this.handleFAQClick(question)}>
+                          ${question}
+                        </li>
+                      `)}
+                    </ul>
+                  </div>
+                ` : ""}
               </div>
             </div>
           `)}
@@ -252,7 +315,7 @@ Please check your API endpoint configuration.`
       </div>
 
       <!-- Input Area -->
-      <div class="input-area">
+      <div class="input-area" style="--primary-color: ${this.primaryColor}; --primary-color-hover: ${this.primaryColorHover};">
         <form class="input-form" @submit=${this.handleSubmit}>
           <input
             type="text"
@@ -285,17 +348,22 @@ Please check your API endpoint configuration.`
     `;
   }
   render() {
+    const primaryColorLight = this.lightenColor(this.primaryColor, 15);
     if (this.mode === "widget") {
       return lit.html`
         <div class="widget-container">
           <!-- Chat Window -->
-          <div class=${classMap_js.classMap({ "widget-window": true, "open": this.isOpen })}>
+          <div
+            class=${classMap_js.classMap({ "widget-window": true, "open": this.isOpen })}
+            style="--widget-width: ${this.widgetWidth}; --widget-height: ${this.widgetHeight};"
+          >
             ${this.renderChatUI()}
           </div>
 
           <!-- Toggle Button -->
           <button
             class="widget-button"
+            style="--primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight};"
             @click=${this.toggleWidget}
             aria-label=${this.isOpen ? "Close chat" : "Open chat"}
           >
@@ -327,7 +395,7 @@ exports.AIChat.styles = lit.css`
       display: flex;
       flex-direction: column;
       height: 100vh;
-      background: #fafafa;
+      background: #ffffff;
     }
 
     :host([mode="fullscreen"][theme="dark"]) {
@@ -351,19 +419,19 @@ exports.AIChat.styles = lit.css`
       width: 60px;
       height: 60px;
       border-radius: 50%;
-      background: #2563eb;
+      background: #3681D3;
       border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 16px rgba(65, 105, 225, 0.3);
       transition: transform 0.2s, box-shadow 0.2s;
     }
 
     .widget-button:hover {
       transform: scale(1.05);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 6px 20px rgba(65, 105, 225, 0.4);
     }
 
     .widget-button svg {
@@ -376,11 +444,11 @@ exports.AIChat.styles = lit.css`
       position: absolute;
       bottom: 80px;
       right: 0;
-      width: 380px;
-      height: 600px;
+      width: var(--widget-width, 380px);
+      height: var(--widget-height, 600px);
       background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -401,35 +469,251 @@ exports.AIChat.styles = lit.css`
       color: #fafafa;
     }
 
-    @media (max-width: 480px) {
+    /* Tablet breakpoint */
+    @media (max-width: 1024px) and (min-width: 769px) {
+      .widget-window {
+        width: var(--widget-width, 400px);
+        height: var(--widget-height, 650px);
+      }
+    }
+
+    /* Small tablet breakpoint */
+    @media (max-width: 768px) and (min-width: 481px) {
+      .widget-window {
+        width: var(--widget-width, 360px);
+        height: var(--widget-height, 550px);
+      }
+    }
+
+    /* Mobile portrait */
+    @media (max-width: 480px) and (orientation: portrait) {
       .widget-window {
         width: calc(100vw - 40px);
+        height: 70vh;
+        bottom: 80px;
+        right: 0;
+      }
+
+      .widget-button {
+        width: 56px;
+        height: 56px;
+      }
+
+      .widget-button svg {
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    /* Mobile landscape */
+    @media (max-width: 900px) and (orientation: landscape) {
+      .widget-window {
+        width: var(--widget-width, 500px);
         height: calc(100vh - 100px);
         bottom: 80px;
         right: 0;
       }
+
+      .widget-button {
+        width: 56px;
+        height: 56px;
+      }
+
+      .widget-button svg {
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    /* Mobile responsive styles for all modes */
+    @media (max-width: 768px) {
+      .header {
+        padding: 0.875rem 1rem;
+      }
+
+      .header-avatar {
+        width: 2.25rem;
+        height: 2.25rem;
+      }
+
+      .title {
+        font-size: 1.125rem;
+      }
+
+      .messages-area {
+        padding: 1rem 0.75rem;
+      }
+
+      .message {
+        gap: 0.75rem;
+      }
+
+      .avatar {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.75rem;
+      }
+
+      .message-content {
+        max-width: 100%;
+        padding: 0.625rem 0.875rem;
+        font-size: 0.9375rem;
+      }
+
+      .empty-state {
+        margin-top: 3rem;
+      }
+
+      .empty-state p {
+        font-size: 1.25rem;
+        padding: 0 1rem;
+      }
+
+      .faq-section {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+      }
+
+      .faq-item {
+        font-size: 0.8125rem;
+        padding: 0.375rem;
+      }
+
+      .input-area {
+        padding: 0.75rem;
+      }
+
+      .input-form {
+        gap: 0.5rem;
+      }
+
+      .input-field {
+        height: 2.75rem;
+        padding: 0 0.875rem;
+        font-size: 0.9375rem;
+      }
+
+      .send-button {
+        width: 2.75rem;
+        height: 2.75rem;
+        flex-shrink: 0;
+      }
+
+      .send-icon {
+        width: 1.125rem;
+        height: 1.125rem;
+      }
+    }
+
+    /* Extra small screens */
+    @media (max-width: 480px) {
+      .header {
+        padding: 0.75rem 0.875rem;
+      }
+
+      .header-avatar {
+        width: 2rem;
+        height: 2rem;
+      }
+
+      .title {
+        font-size: 1rem;
+      }
+
+      .messages-area {
+        padding: 0.75rem 0.5rem;
+      }
+
+      .message {
+        gap: 0.5rem;
+      }
+
+      .avatar {
+        width: 1.75rem;
+        height: 1.75rem;
+        font-size: 0.7rem;
+      }
+
+      .message-content {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        border-radius: 0.75rem;
+      }
+
+      .empty-state {
+        margin-top: 2rem;
+      }
+
+      .empty-state p {
+        font-size: 1.125rem;
+      }
+
+      .input-area {
+        padding: 0.625rem;
+      }
+
+      .input-field {
+        height: 2.5rem;
+        padding: 0 0.75rem;
+        font-size: 0.875rem;
+      }
+
+      .send-button {
+        width: 2.5rem;
+        height: 2.5rem;
+      }
+
+      .version-tag {
+        font-size: 0.7rem;
+        padding: 0.375rem;
+      }
     }
 
     .header {
-      border-bottom: 1px solid #e4e4e7;
-      background: #fff;
-      padding: 1rem;
+      background:#3681D3;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 2px 8px rgba(65, 105, 225, 0.2);
     }
 
     :host([theme="dark"]) .header {
-      border-bottom-color: #27272a;
-      background: #18181b;
+      background: #3681D3
     }
 
     .header-content {
       max-width: 56rem;
       margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .header-avatar {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .header-avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .title {
       font-size: 1.25rem;
       font-weight: 600;
       margin: 0;
+      color: #fff;
     }
 
     .messages-area {
@@ -437,6 +721,11 @@ exports.AIChat.styles = lit.css`
       overflow-y: auto;
       padding: 1.5rem 1rem;
       position: relative;
+      background: #ffffff;
+    }
+
+    :host([theme="dark"]) .messages-area {
+      background: #000;
     }
 
     .messages-area::before {
@@ -450,7 +739,7 @@ exports.AIChat.styles = lit.css`
       background-size: 200px auto 60%;
       background-position: center center;
       background-repeat: no-repeat;
-      opacity: 0.5;
+      opacity: 0.03;
       pointer-events: none;
       z-index: 0;
     }
@@ -467,7 +756,7 @@ exports.AIChat.styles = lit.css`
 
     .empty-state {
       text-align: center;
-      color: #71717a;
+      color: #9ca3af;
       margin-top: 5rem;
     }
 
@@ -494,18 +783,20 @@ exports.AIChat.styles = lit.css`
       width: 2.5rem;
       height: 2.5rem;
       border-radius: 9999px;
-      background: #e4e4e7;
+      background: #E5E7EB;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-weight: 500;
+      font-weight: 600;
       font-size: 0.875rem;
       overflow: hidden;
+      color: #6B7280;
     }
 
     :host([theme="dark"]) .avatar {
       background: #3f3f46;
+      color: #9ca3af;
     }
 
     .avatar-image {
@@ -516,24 +807,30 @@ exports.AIChat.styles = lit.css`
 
     .message-content {
       max-width: 36rem;
-      padding: 0.75rem 1rem;
-      border-radius: 1rem;
+      padding: 0.875rem 1.125rem;
+      border-radius: 1.25rem;
+      line-height: 1.6;
     }
 
     .message.user .message-content {
-      background: #2563eb;
-      color: #fff;
+      background: var(--user-message-bg, #D6E4FF);
+      color: #1a1a1a;
+      border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
     }
 
     .message.assistant .message-content {
-      background: #fff;
-      border: 1px solid #e4e4e7;
-      color: #09090b;
+      background: var(--bot-message-bg, #F5F5F5);
+      color: #1a1a1a;
+      border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
+    }
+
+    :host([theme="dark"]) .message.user .message-content {
+      background: #3D5A99;
+      color: #fff;
     }
 
     :host([theme="dark"]) .message.assistant .message-content {
       background: #27272a;
-      border-color: #3f3f46;
       color: #fafafa;
     }
 
@@ -545,7 +842,7 @@ exports.AIChat.styles = lit.css`
     .faq-section {
       margin-top: 1rem;
       padding-top: 1rem;
-      border-top: 1px solid #e4e4e7;
+      border-top: 1px solid #d1d5db;
     }
 
     :host([theme="dark"]) .faq-section {
@@ -554,13 +851,13 @@ exports.AIChat.styles = lit.css`
 
     .faq-title {
       font-size: 0.875rem;
-      font-weight: 500;
-      color: #3f3f46;
+      font-weight: 600;
+      color: var(--primary-color, #3681D3);
       margin: 0 0 0.5rem 0;
     }
 
     :host([theme="dark"]) .faq-title {
-      color: #d4d4d8;
+      color: var(--primary-color-light, #5B7FE8);
     }
 
     .faq-list {
@@ -574,25 +871,28 @@ exports.AIChat.styles = lit.css`
 
     .faq-item {
       font-size: 0.875rem;
-      color: #52525b;
-      padding: 0.5rem;
-      border-radius: 0.375rem;
+      color: var(--primary-color, #3681D3);
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.5rem;
       cursor: pointer;
       transition: background-color 0.2s, color 0.2s;
+      border: 1px solid transparent;
     }
 
     .faq-item:hover {
-      background-color: #f4f4f5;
-      color: #18181b;
+      background-color: #EEF2FF;
+      color: var(--primary-color-hover, #3457C7);
+      border-color: #C7D2FE;
     }
 
     :host([theme="dark"]) .faq-item {
-      color: #a1a1aa;
+      color: var(--primary-color-light, #5B7FE8);
     }
 
     :host([theme="dark"]) .faq-item:hover {
-      background-color: #27272a;
-      color: #fafafa;
+      background-color: #1e293b;
+      color: #93C5FD;
+      border-color: #3f3f46;
     }
 
     .loading {
@@ -615,14 +915,14 @@ exports.AIChat.styles = lit.css`
     }
 
     .input-area {
-      border-top: 1px solid #e4e4e7;
+      border-top: 1px solid #e5e7eb;
       background: #fff;
-      padding: 1rem;
+      padding: 1rem 1.25rem;
     }
 
     :host([theme="dark"]) .input-area {
       border-top-color: #27272a;
-      background: #000;
+      background: #18181b;
     }
 
     .input-form {
@@ -630,18 +930,24 @@ exports.AIChat.styles = lit.css`
       margin: 0 auto;
       display: flex;
       gap: 0.75rem;
+      align-items: center;
     }
 
     .input-field {
       flex: 1;
       height: 3rem;
       padding: 0 1rem;
-      border: 1px solid #e4e4e7;
-      border-radius: 0.5rem;
-      font-size: 1rem;
+      border: 1px solid #d1d5db;
+      border-radius: 1.5rem;
+      font-size: 0.9375rem;
       font-family: inherit;
       background: #fff;
-      color: #09090b;
+      color: #374151;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-field::placeholder {
+      color: #9ca3af;
     }
 
     :host([theme="dark"]) .input-field {
@@ -651,8 +957,9 @@ exports.AIChat.styles = lit.css`
     }
 
     .input-field:focus {
-      outline: 2px solid #2563eb;
-      outline-offset: 2px;
+      outline: none;
+      border-color: var(--primary-color, #3681D3);
+      box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.1);
     }
 
     .input-field:disabled {
@@ -665,17 +972,23 @@ exports.AIChat.styles = lit.css`
       height: 3rem;
       border-radius: 9999px;
       border: none;
-      background: #2563eb;
+      background: var(--primary-color, #3681D3);
       color: #fff;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.1s;
+      flex-shrink: 0;
     }
 
     .send-button:hover:not(:disabled) {
-      background: #1d4ed8;
+      background: var(--primary-color-hover, #3457C7);
+      transform: scale(1.05);
+    }
+
+    .send-button:active:not(:disabled) {
+      transform: scale(0.95);
     }
 
     .send-button:disabled {
@@ -692,12 +1005,12 @@ exports.AIChat.styles = lit.css`
       text-align: center;
       padding: 0.5rem;
       font-size: 0.75rem;
-      color: #71717a;
-      border-top: 1px solid #e4e4e7;
+      color: #9ca3af;
+      border-top: 1px solid #e5e7eb;
     }
 
     :host([theme="dark"]) .version-tag {
-      color: #a1a1aa;
+      color: #6b7280;
       border-top-color: #27272a;
     }
   `;
@@ -709,7 +1022,13 @@ exports.AIChat.properties = {
   mode: { type: String, reflect: true },
   initialMessages: { type: Array },
   botAvatarUrl: { type: String, attribute: "bot-avatar-url" },
-  backgroundImageUrl: { type: String, attribute: "background-image-url" }
+  backgroundImageUrl: { type: String, attribute: "background-image-url" },
+  widgetWidth: { type: String, attribute: "widget-width" },
+  widgetHeight: { type: String, attribute: "widget-height" },
+  primaryColor: { type: String, attribute: "primary-color" },
+  primaryColorHover: { type: String, attribute: "primary-color-hover" },
+  userMessageBg: { type: String, attribute: "user-message-bg" },
+  botMessageBg: { type: String, attribute: "bot-message-bg" }
 };
 __decorateClass([
   decorators_js.state()

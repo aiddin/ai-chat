@@ -74,6 +74,11 @@
           "kind": "variable",
           "name": "faqs",
           "default": "void 0"
+        },
+        {
+          "kind": "variable",
+          "name": "suggestedQuestions",
+          "default": "void 0"
         }
       ],
       "exports": []
@@ -216,6 +221,14 @@
             "name": "Message",
             "module": "./components/ai-chat"
           }
+        },
+        {
+          "kind": "js",
+          "name": "FAQ",
+          "declaration": {
+            "name": "FAQ",
+            "module": "./components/ai-chat"
+          }
         }
       ]
     },
@@ -234,6 +247,12 @@
     {
       "kind": "javascript-module",
       "path": "tests/check-widget.spec.ts",
+      "declarations": [],
+      "exports": []
+    },
+    {
+      "kind": "javascript-module",
+      "path": "tests/final-widget-test.spec.ts",
       "declarations": [],
       "exports": []
     },
@@ -607,6 +626,66 @@
             },
             {
               "kind": "field",
+              "name": "widgetWidth",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'380px'",
+              "attribute": "widget-width"
+            },
+            {
+              "kind": "field",
+              "name": "widgetHeight",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'600px'",
+              "attribute": "widget-height"
+            },
+            {
+              "kind": "field",
+              "name": "primaryColor",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'#3681D3'",
+              "attribute": "primary-color"
+            },
+            {
+              "kind": "field",
+              "name": "primaryColorHover",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'#3457C7'",
+              "attribute": "primary-color-hover"
+            },
+            {
+              "kind": "field",
+              "name": "userMessageBg",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'#D6E4FF'",
+              "attribute": "user-message-bg"
+            },
+            {
+              "kind": "field",
+              "name": "botMessageBg",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'#F5F5F5'",
+              "attribute": "bot-message-bg"
+            },
+            {
+              "kind": "field",
               "name": "messages",
               "type": {
                 "text": "Message[]"
@@ -653,6 +732,31 @@
               "kind": "method",
               "name": "toggleWidget",
               "privacy": "private"
+            },
+            {
+              "kind": "method",
+              "name": "lightenColor",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "string"
+                }
+              },
+              "parameters": [
+                {
+                  "name": "hex",
+                  "type": {
+                    "text": "string"
+                  }
+                },
+                {
+                  "name": "percent",
+                  "default": "15",
+                  "type": {
+                    "text": "number"
+                  }
+                }
+              ]
             },
             {
               "kind": "method",
@@ -791,6 +895,54 @@
               },
               "default": "''",
               "fieldName": "backgroundImageUrl"
+            },
+            {
+              "name": "widget-width",
+              "type": {
+                "text": "string"
+              },
+              "default": "'380px'",
+              "fieldName": "widgetWidth"
+            },
+            {
+              "name": "widget-height",
+              "type": {
+                "text": "string"
+              },
+              "default": "'600px'",
+              "fieldName": "widgetHeight"
+            },
+            {
+              "name": "primary-color",
+              "type": {
+                "text": "string"
+              },
+              "default": "'#3681D3'",
+              "fieldName": "primaryColor"
+            },
+            {
+              "name": "primary-color-hover",
+              "type": {
+                "text": "string"
+              },
+              "default": "'#3457C7'",
+              "fieldName": "primaryColorHover"
+            },
+            {
+              "name": "user-message-bg",
+              "type": {
+                "text": "string"
+              },
+              "default": "'#D6E4FF'",
+              "fieldName": "userMessageBg"
+            },
+            {
+              "name": "bot-message-bg",
+              "type": {
+                "text": "string"
+              },
+              "default": "'#F5F5F5'",
+              "fieldName": "botMessageBg"
             }
           ],
           "superclass": {
