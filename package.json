@@ -1,13 +1,14 @@
 {
   "name": "@a.izzuddin/ai-chat",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "A framework-agnostic AI chat web component. Works with React, Vue, Svelte, Angular, and vanilla JavaScript.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "custom-elements.json"
+    "custom-elements.json",
+    "global.d.ts"
   ],
   "exports": {
     ".": {

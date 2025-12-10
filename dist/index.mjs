@@ -14,7 +14,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-var VERSION = "0.2.7";
+var VERSION = "0.2.8";
 var AIChat = class extends LitElement {
   constructor() {
     super();

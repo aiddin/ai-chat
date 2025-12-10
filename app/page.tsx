@@ -20,10 +20,11 @@ export default function Home() {
         api-url={apiUrl}
         session-id="demo-session"
         title="AI Assistant"
-        theme="light"
+        theme="dark"
         mode="widget"
+        welcome-message="Hai, bagaimana saya boleh bantu?"
+        welcome-subtitle="Sila tanya tentang permohonan atau apa-apa berkaitan MySTI"
         bot-avatar-url="/assets/chat-bot-icon.png"
-        background-image-url="/assets/chat-bot-bg.png"
         primary-color="#3681D3"
         primary-color-hover="#3457C7"
         user-message-bg="#D6E4FF"
