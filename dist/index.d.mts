@@ -131,6 +131,7 @@ declare class AIChat extends LitElement {
     constructor();
     private toggleWidget;
     private lightenColor;
+    private formatMessageContent;
     connectedCallback(): void;
     updated(changedProperties: PropertyValues): void;
     private scrollToBottom;

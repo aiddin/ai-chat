@@ -2,6 +2,7 @@ import { css, LitElement, html } from 'lit';
 import { state, customElement } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { classMap } from 'lit/directives/class-map.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -13,7 +14,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-var VERSION = "0.2.6";
+var VERSION = "0.2.7";
 var AIChat = class extends LitElement {
   constructor() {
     super();
@@ -48,6 +49,57 @@ var AIChat = class extends LitElement {
     const newG = Math.min(255, Math.round(g + (255 - g) * (percent / 100)));
     const newB = Math.min(255, Math.round(b + (255 - b) * (percent / 100)));
     return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
+  }
+  formatMessageContent(content) {
+    const escapeHtml = (text) => {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    };
+    let processedContent = content.replace(/(\d+\.\s+[^0-9]+?)(?=\s+\d+\.\s+|\s*$)/g, "$1\n");
+    processedContent = processedContent.replace(/(-\s+[^-]+?)(?=\s+-\s+|\s*$)/g, "$1\n");
+    const lines = processedContent.split("\n");
+    let formattedContent = "";
+    let inList = false;
+    let listType = null;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+      const unorderedMatch = trimmedLine.match(/^[-*•]\s+(.+)$/);
+      const orderedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
+      if (unorderedMatch) {
+        if (!inList || listType !== "ul") {
+          if (inList) formattedContent += listType === "ol" ? "</ol>" : "</ul>";
+          formattedContent += "<ul>";
+          inList = true;
+          listType = "ul";
+        }
+        formattedContent += `<li>${escapeHtml(unorderedMatch[1])}</li>`;
+      } else if (orderedMatch) {
+        if (!inList || listType !== "ol") {
+          if (inList) formattedContent += listType === "ol" ? "</ol>" : "</ul>";
+          formattedContent += "<ol>";
+          inList = true;
+          listType = "ol";
+        }
+        formattedContent += `<li>${escapeHtml(orderedMatch[1])}</li>`;
+      } else {
+        if (inList) {
+          formattedContent += listType === "ol" ? "</ol>" : "</ul>";
+          inList = false;
+          listType = null;
+        }
+        if (trimmedLine === "") {
+          formattedContent += "<br>";
+        } else {
+          formattedContent += escapeHtml(line) + "\n";
+        }
+      }
+    }
+    if (inList) {
+      formattedContent += listType === "ol" ? "</ol>" : "</ul>";
+    }
+    return formattedContent;
   }
   connectedCallback() {
     super.connectedCallback();
@@ -268,13 +320,13 @@ Please check your API endpoint configuration.`
                 ${msg.role === "user" ? "U" : this.botAvatarUrl ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />` : "AI"}
               </div>
               <div class="message-content">
-                <p class="message-text">${msg.content}</p>
+                <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
                 ${msg.role === "assistant" && msg.faqs && msg.faqs.length > 0 ? html`
                   <div class="faq-section">
                     <p class="faq-title">Related FAQs:</p>
                     <ul class="faq-list">
                       ${msg.faqs.map((faq) => html`
-                        <li class="faq-item" @click=${() => this.handleFAQClick(faq.question)}>
+                        <li class="faq-item-static">
                           ${faq.question}
                         </li>
                       `)}
@@ -574,7 +626,7 @@ AIChat.styles = css`
 
       .faq-item {
         font-size: 0.8125rem;
-        padding: 0.375rem;
+        padding: 0;
       }
 
       .input-area {
@@ -835,11 +887,32 @@ AIChat.styles = css`
     .message-text {
       white-space: pre-wrap;
       margin: 0;
+      word-wrap: break-word;
+    }
+
+    .message-text ul,
+    .message-text ol {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+      white-space: normal;
+    }
+
+    .message-text li {
+      margin: 0.25rem 0;
+      white-space: normal;
+    }
+
+    .message-text ul {
+      list-style-type: disc;
+    }
+
+    .message-text ol {
+      list-style-type: decimal;
     }
 
     .faq-section {
-      margin-top: 1rem;
-      padding-top: 1rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
       border-top: 1px solid #d1d5db;
     }
 
@@ -851,7 +924,7 @@ AIChat.styles = css`
       font-size: 0.875rem;
       font-weight: 600;
       color: var(--primary-color, #3681D3);
-      margin: 0 0 0.5rem 0;
+      margin: 0 0 0.375rem 0;
     }
 
     :host([theme="dark"]) .faq-title {
@@ -864,13 +937,13 @@ AIChat.styles = css`
       margin: 0;
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.375rem;
     }
 
     .faq-item {
       font-size: 0.875rem;
       color: var(--primary-color, #3681D3);
-      padding: 0.5rem 0.75rem;
+      padding: 0;
       border-radius: 0.5rem;
       cursor: pointer;
       transition: background-color 0.2s, color 0.2s;
@@ -891,6 +964,19 @@ AIChat.styles = css`
       background-color: #1e293b;
       color: #93C5FD;
       border-color: #3f3f46;
+    }
+
+    .faq-item-static {
+      font-size: 0.875rem;
+      color: #6B7280;
+      padding: 0;
+      border-radius: 0.5rem;
+      cursor: default;
+      border: 1px solid transparent;
+    }
+
+    :host([theme="dark"]) .faq-item-static {
+      color: #9CA3AF;
     }
 
     .loading {

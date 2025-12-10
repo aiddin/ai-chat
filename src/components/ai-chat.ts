@@ -4,7 +4,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
-const VERSION = '0.2.6';
+const VERSION = '0.2.7';
 
 export interface FAQ {
   "no.": string;

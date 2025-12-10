@@ -760,6 +760,24 @@
             },
             {
               "kind": "method",
+              "name": "formatMessageContent",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "string"
+                }
+              },
+              "parameters": [
+                {
+                  "name": "content",
+                  "type": {
+                    "text": "string"
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "method",
               "name": "scrollToBottom",
               "privacy": "private"
             },
