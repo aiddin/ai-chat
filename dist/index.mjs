@@ -25,6 +25,7 @@ var AIChat = class extends LitElement {
     this.mode = "fullscreen";
     this.initialMessages = [];
     this.botAvatarUrl = "";
+    this.widgetIconUrl = "";
     this.backgroundImageUrl = "";
     this.widgetWidth = "380px";
     this.widgetHeight = "600px";
@@ -391,7 +392,10 @@ Please check your API endpoint configuration.`
 
           <!-- Toggle Button -->
           <button
-            class="widget-button"
+            class=${classMap({
+        "widget-button": true,
+        "widget-button-no-bg": !this.isOpen && !!this.widgetIconUrl
+      })}
             style="--primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight};"
             @click=${this.toggleWidget}
             aria-label=${this.isOpen ? "Close chat" : "Open chat"}
@@ -401,6 +405,8 @@ Please check your API endpoint configuration.`
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
+            ` : this.widgetIconUrl ? html`
+              <img src="${this.widgetIconUrl}" alt="Chat" class="widget-button-icon" />
             ` : html`
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -463,10 +469,27 @@ AIChat.styles = css`
       box-shadow: 0 6px 20px rgba(65, 105, 225, 0.4);
     }
 
+    .widget-button-no-bg {
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .widget-button-no-bg:hover {
+      background: transparent;
+      box-shadow: none;
+      transform: scale(1.1);
+    }
+
     .widget-button svg {
       width: 28px;
       height: 28px;
       color: white;
+    }
+
+    .widget-button-icon {
+      width: auto;
+      height: auto;
+      object-fit: cover;
     }
 
     .widget-window {
@@ -1142,6 +1165,7 @@ AIChat.properties = {
   mode: { type: String, reflect: true },
   initialMessages: { type: Array },
   botAvatarUrl: { type: String, attribute: "bot-avatar-url" },
+  widgetIconUrl: { type: String, attribute: "widget-icon-url" },
   backgroundImageUrl: { type: String, attribute: "background-image-url" },
   widgetWidth: { type: String, attribute: "widget-width" },
   widgetHeight: { type: String, attribute: "widget-height" },

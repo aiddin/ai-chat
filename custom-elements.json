@@ -597,6 +597,16 @@
             },
             {
               "kind": "field",
+              "name": "widgetIconUrl",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "attribute": "widget-icon-url"
+            },
+            {
+              "kind": "field",
               "name": "backgroundImageUrl",
               "privacy": "public",
               "type": {
@@ -908,6 +918,14 @@
               "fieldName": "botAvatarUrl"
             },
             {
+              "name": "widget-icon-url",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "fieldName": "widgetIconUrl"
+            },
+            {
               "name": "background-image-url",
               "type": {
                 "text": "string"
@@ -1034,12 +1052,6 @@
           }
         }
       ]
-    },
-    {
-      "kind": "javascript-module",
-      "path": "pages/api/status/statusService.ts",
-      "declarations": [],
-      "exports": []
     }
   ]
 }

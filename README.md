@@ -117,9 +117,12 @@ import '@a.izzuddin/ai-chat';
   session-id="user-123"
   title="AI Assistant"
   bot-avatar-url="/path/to/avatar.png"
+  widget-icon-url="/path/to/widget-icon.png"
   background-image-url="/path/to/background.png">
 </ai-chat>
 ```
+
+**Note:** The `widget-icon-url` sets a custom icon for the floating widget button (only applies in widget mode).
 
 #### Custom Welcome Message
 The welcome message appears as the first assistant message in the chat instead of a large empty state.
@@ -162,6 +165,7 @@ The welcome message and subtitle will be combined and displayed as a regular cha
 | `user-message-bg` | string | '#D6E4FF' | User message background |
 | `bot-message-bg` | string | '#F5F5F5' | Bot message background |
 | `bot-avatar-url` | string | '' | Custom bot avatar image |
+| `widget-icon-url` | string | '' | Custom widget button icon (widget mode only) |
 | `background-image-url` | string | '' | Chat background image |
 | `welcome-message` | string | 'How can I help you today?' | Initial message from assistant (appears as first chat message) |
 | `welcome-subtitle` | string | '' | Optional subtitle added to welcome message |

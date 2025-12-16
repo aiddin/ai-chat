@@ -25,6 +25,7 @@ export default function Home() {
         welcome-message="Hai, bagaimana saya boleh bantu?"
         welcome-subtitle="Sila tanya tentang permohonan atau apa-apa berkaitan MySTI"
         bot-avatar-url="/assets/chat-bot-icon.png"
+        widget-icon-url="/assets/chat-bot-icon.png"
         primary-color="#3681D3"
         primary-color-hover="#3457C7"
         user-message-bg="#D6E4FF"
