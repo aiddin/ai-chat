@@ -2,15 +2,11 @@ import * as lit_html from 'lit-html';
 import * as lit from 'lit';
 import { LitElement, PropertyValues } from 'lit';
 
-interface FAQ {
-    "no.": string;
-    question: string;
-}
 interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
-    faqs?: FAQ[];
+    faqs?: any[];
     suggestedQuestions?: string[];
 }
 /**
@@ -157,4 +153,4 @@ declare global {
     }
 }
 
-export { AIChat, type FAQ, type Message };
+export { AIChat, type Message };

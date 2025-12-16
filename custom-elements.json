@@ -69,18 +69,7 @@
     {
       "kind": "javascript-module",
       "path": "dist/index.js",
-      "declarations": [
-        {
-          "kind": "variable",
-          "name": "faqs",
-          "default": "void 0"
-        },
-        {
-          "kind": "variable",
-          "name": "suggestedQuestions",
-          "default": "void 0"
-        }
-      ],
+      "declarations": [],
       "exports": []
     },
     {
@@ -219,14 +208,6 @@
           "name": "Message",
           "declaration": {
             "name": "Message",
-            "module": "./components/ai-chat"
-          }
-        },
-        {
-          "kind": "js",
-          "name": "FAQ",
-          "declaration": {
-            "name": "FAQ",
             "module": "./components/ai-chat"
           }
         }
@@ -1053,6 +1034,12 @@
           }
         }
       ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "pages/api/status/statusService.ts",
+      "declarations": [],
+      "exports": []
     }
   ]
 }

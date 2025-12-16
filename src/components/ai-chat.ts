@@ -6,16 +6,17 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
 const VERSION = '0.2.8';
 
-export interface FAQ {
-  "no.": string;
-  question: string;
-}
+// FAQ functionality - commented out for now
+// export interface FAQ {
+//   "no.": string;
+//   question: string;
+// }
 
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  faqs?: FAQ[];
+  faqs?: any[];  // Commented out functionality - type changed to any[] to avoid FAQ interface dependency
   suggestedQuestions?: string[];
 }
 
@@ -647,7 +648,8 @@ export class AIChat extends LitElement {
       border-color: #3f3f46;
     }
 
-    .faq-item-static {
+    /* FAQ static item styles - commented out for now */
+    /* .faq-item-static {
       font-size: 0.875rem;
       color: #6B7280;
       padding: 0;
@@ -658,7 +660,7 @@ export class AIChat extends LitElement {
 
     :host([theme="dark"]) .faq-item-static {
       color: #9CA3AF;
-    }
+    } */
 
     .loading {
       display: flex;
@@ -949,6 +951,17 @@ export class AIChat extends LitElement {
     super.connectedCallback();
     if (this.initialMessages && this.initialMessages.length > 0) {
       this.messages = [...this.initialMessages];
+    } else if (this.welcomeMessage) {
+      // Add welcome message as initial assistant message
+      const welcomeText = this.welcomeSubtitle
+        ? `${this.welcomeMessage}\n\n${this.welcomeSubtitle}`
+        : this.welcomeMessage;
+
+      this.messages = [{
+        id: 'welcome-' + Date.now(),
+        role: 'assistant',
+        content: welcomeText,
+      }];
     }
   }
 
@@ -1021,9 +1034,9 @@ export class AIChat extends LitElement {
       const data = await response.json();
       console.log('🔍 Raw API response:', data);
 
-      // Extract the response text, FAQs, and suggested questions
+      // Extract the response text and suggested questions
       let responseText = 'No response from agent';
-      let faqs: FAQ[] | undefined = undefined;
+      // let faqs: FAQ[] | undefined = undefined;  // Commented out - FAQ functionality disabled
       let suggestedQuestions: string[] | undefined = undefined;
 
       if (data && typeof data === 'object' && data.response && typeof data.response === 'string') {
@@ -1042,14 +1055,14 @@ export class AIChat extends LitElement {
 
             if (innerData && innerData.response && typeof innerData.response === 'string') {
               responseText = innerData.response;
-              faqs = innerData.faq_used || innerData.faqs_used || undefined;
+              // faqs = innerData.faq_used || innerData.faqs_used || undefined;  // Commented out - FAQ functionality disabled
               suggestedQuestions = innerData.suggested_follow_ups || innerData.suggested_questions || undefined;
               console.log('✅ Extracted text length:', responseText.length);
-              console.log('✅ Extracted FAQs count:', faqs?.length || 0);
+              // console.log('✅ Extracted FAQs count:', faqs?.length || 0);  // Commented out - FAQ functionality disabled
               console.log('✅ Extracted suggested questions count:', suggestedQuestions?.length || 0);
             } else {
               responseText = data.response;
-              faqs = data.faq_used || data.faqs_used || undefined;
+              // faqs = data.faq_used || data.faqs_used || undefined;  // Commented out - FAQ functionality disabled
               suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || undefined;
             }
           } catch (parseError) {
@@ -1072,29 +1085,30 @@ export class AIChat extends LitElement {
               responseText = 'Error: Could not parse response';
             }
 
-            // Extract FAQs array (support both faq_used and faqs_used)
-            const faqsPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[^\]]*\])/s;
-            const faqsMatch = data.response.match(faqsPattern);
-
-            if (faqsMatch) {
-              try {
-                faqs = JSON.parse(faqsMatch[1]);
-                console.log('✅ Extracted FAQs, count:', faqs?.length || 0);
-              } catch {
-                console.log('⚠️ Could not parse FAQs, trying multiline...');
-                // FAQs might span multiple lines
-                const faqsMultiPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
-                const faqsMultiMatch = data.response.match(faqsMultiPattern);
-                if (faqsMultiMatch) {
-                  try {
-                    faqs = JSON.parse(faqsMultiMatch[1]);
-                    console.log('✅ Extracted multi-line FAQs, count:', faqs?.length || 0);
-                  } catch {
-                    faqs = undefined;
-                  }
-                }
-              }
-            }
+            // FAQ extraction - commented out for now
+            // // Extract FAQs array (support both faq_used and faqs_used)
+            // const faqsPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[^\]]*\])/s;
+            // const faqsMatch = data.response.match(faqsPattern);
+            //
+            // if (faqsMatch) {
+            //   try {
+            //     faqs = JSON.parse(faqsMatch[1]);
+            //     console.log('✅ Extracted FAQs, count:', faqs?.length || 0);
+            //   } catch {
+            //     console.log('⚠️ Could not parse FAQs, trying multiline...');
+            //     // FAQs might span multiple lines
+            //     const faqsMultiPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+            //     const faqsMultiMatch = data.response.match(faqsMultiPattern);
+            //     if (faqsMultiMatch) {
+            //       try {
+            //         faqs = JSON.parse(faqsMultiMatch[1]);
+            //         console.log('✅ Extracted multi-line FAQs, count:', faqs?.length || 0);
+            //       } catch {
+            //         faqs = undefined;
+            //       }
+            //     }
+            //   }
+            // }
 
             // Extract suggested questions array
             const suggestedPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[^\]]*\])/s;
@@ -1123,7 +1137,7 @@ export class AIChat extends LitElement {
           // Not JSON, direct text response
           console.log('📄 Direct text response (not JSON)');
           responseText = data.response;
-          faqs = data.faq_used || data.faqs_used || undefined;
+          // faqs = data.faq_used || data.faqs_used || undefined;  // Commented out - FAQ functionality disabled
           suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || undefined;
         }
       } else if (typeof data === 'string') {
@@ -1133,20 +1147,20 @@ export class AIChat extends LitElement {
         // Fallback for other formats
         console.warn('⚠️ Unexpected format, using fallback');
         responseText = data.message || data.answer || 'Error: Unexpected response format';
-        faqs = data.faq_used || data.faqs_used || undefined;
+        // faqs = data.faq_used || data.faqs_used || undefined;  // Commented out - FAQ functionality disabled
         suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || undefined;
       }
 
       console.log('🎯 Final responseText length:', responseText.length);
       console.log('🎯 Final responseText preview:', responseText.substring(0, 100));
-      console.log('🎯 Final FAQs:', faqs);
+      // console.log('🎯 Final FAQs:', faqs);  // Commented out - FAQ functionality disabled
       console.log('🎯 Final suggested questions:', suggestedQuestions);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: responseText,
-        faqs: faqs,
+        // faqs: faqs,  // Commented out - FAQ functionality disabled
         suggestedQuestions: suggestedQuestions,
       };
 
@@ -1201,22 +1215,6 @@ export class AIChat extends LitElement {
       <!-- Messages Area -->
       <div class="messages-area" style="--user-message-bg: ${this.userMessageBg}; --bot-message-bg: ${this.botMessageBg}; --primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover}; ${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}');` : ''}">
         <div class="messages-container">
-          ${this.messages.length === 0 ? html`
-            <div class="empty-state">
-              <div class="empty-state-avatar">
-                ${this.botAvatarUrl
-                  ? html`<img src="${this.botAvatarUrl}" alt="Bot" class="empty-state-avatar-image" />`
-                  : html`<svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>`}
-              </div>
-              <div class="empty-state-content">
-                <p class="empty-state-message">${this.welcomeMessage}</p>
-                ${this.welcomeSubtitle ? html`<p class="empty-state-subtitle">${this.welcomeSubtitle}</p>` : ''}
-              </div>
-            </div>
-          ` : ''}
-
           ${repeat(this.messages, (msg) => msg.id, (msg) => html`
             <div class=${classMap({
               message: true,
@@ -1232,7 +1230,8 @@ export class AIChat extends LitElement {
               </div>
               <div class="message-content">
                 <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
-                ${msg.role === 'assistant' && msg.faqs && msg.faqs.length > 0 ? html`
+                <!-- FAQ section - commented out for now -->
+                <!-- ${msg.role === 'assistant' && msg.faqs && msg.faqs.length > 0 ? html`
                   <div class="faq-section">
                     <p class="faq-title">Related FAQs:</p>
                     <ul class="faq-list">
@@ -1243,7 +1242,7 @@ export class AIChat extends LitElement {
                       `)}
                     </ul>
                   </div>
-                ` : ''}
+                ` : ''} -->
                 ${msg.role === 'assistant' && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? html`
                   <div class="faq-section">
                     <p class="faq-title">Suggested Questions:</p>
@@ -1283,7 +1282,7 @@ export class AIChat extends LitElement {
           <input
             type="text"
             class="input-field"
-            placeholder="Type your message..."
+            placeholder="Taip mesej anda..."
             .value=${this.input}
             @input=${this.handleInput}
             ?disabled=${this.isLoading}

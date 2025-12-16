@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('AI Chat FAQ Display', () => {
+test.describe('AI Chat Response Display', () => {
   test('should display text response, not JSON', async ({ page }) => {
     // Mock the API response
     await page.route('**/ask', async (route) => {
@@ -8,12 +8,13 @@ test.describe('AI Chat FAQ Display', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          response: "MySTI mempunyai beberapa fungsi utama:\n\n1. Sebagai medium untuk pemohon yang layak memohon logo dan sijil bagi produk dan perkhidmatan hasil penyelidikan dan pembangunan (R&D) tempatan.\n\n2. Menjadi pangkalan data yang mengumpulkan barangan dan perkhidmatan R&D tempatan yang telah diluluskan dengan logo dan sijil MySTI.\n\n3. Menjadi rujukan untuk program Perolehan Kerajaan bagi barangan dan perkhidmatan yang dihasilkan dari R&D tempatan.\n\nObjektif utamanya adalah untuk merangsang pertumbuhan industri tempatan, mengurangkan kebergantungan kepada import, dan memacu pertumbuhan ekonomi berasaskan teknologi tempatan.",
-          faqs_used: [
-            { "no.": "1", "question": "Apakah MySTI?" },
-            { "no.": "5", "question": "Mengapa MySTI diwujudkan?" },
-            { "no.": "7", "question": "Apakah objektif utama program MySTI?" }
-          ]
+          response: "MySTI mempunyai beberapa fungsi utama:\n\n1. Sebagai medium untuk pemohon yang layak memohon logo dan sijil bagi produk dan perkhidmatan hasil penyelidikan dan pembangunan (R&D) tempatan.\n\n2. Menjadi pangkalan data yang mengumpulkan barangan dan perkhidmatan R&D tempatan yang telah diluluskan dengan logo dan sijil MySTI.\n\n3. Menjadi rujukan untuk program Perolehan Kerajaan bagi barangan dan perkhidmatan yang dihasilkan dari R&D tempatan.\n\nObjektif utamanya adalah untuk merangsang pertumbuhan industri tempatan, mengurangkan kebergantungan kepada import, dan memacu pertumbuhan ekonomi berasaskan teknologi tempatan."
+          // FAQ functionality - commented out for now
+          // faqs_used: [
+          //   { "no.": "1", "question": "Apakah MySTI?" },
+          //   { "no.": "5", "question": "Mengapa MySTI diwujudkan?" },
+          //   { "no.": "7", "question": "Apakah objektif utama program MySTI?" }
+          // ]
         })
       });
     });
@@ -49,10 +50,10 @@ test.describe('AI Chat FAQ Display', () => {
     console.log('Message text:', messageText);
 
     // Verify it's NOT displaying JSON
-    expect(messageText).not.toContain('"no."');
-    expect(messageText).not.toContain('"question"');
     expect(messageText).not.toContain('"response"');
-    expect(messageText).not.toContain('faqs_used');
+    // expect(messageText).not.toContain('"no."');  // Commented out - FAQ functionality disabled
+    // expect(messageText).not.toContain('"question"');  // Commented out - FAQ functionality disabled
+    // expect(messageText).not.toContain('faqs_used');  // Commented out - FAQ functionality disabled
     expect(messageText).not.toContain('{');
     expect(messageText).not.toContain('}');
 
@@ -60,22 +61,22 @@ test.describe('AI Chat FAQ Display', () => {
     expect(messageText).toContain('MySTI mempunyai beberapa fungsi utama');
     expect(messageText).toContain('Sebagai medium untuk pemohon');
 
-    // Verify FAQs are displayed separately
-    const faqSection = messageContent.locator('.faq-section');
-    await expect(faqSection).toBeVisible();
-
-    // Check FAQ title
-    await expect(faqSection.locator('.faq-title')).toHaveText('Related FAQs:');
-
-    // Check FAQ items
-    const faqItems = faqSection.locator('.faq-item');
-    await expect(faqItems).toHaveCount(3);
-
-    // Verify FAQ content
-    await expect(faqItems.nth(0)).toContainText('1.');
-    await expect(faqItems.nth(0)).toContainText('Apakah MySTI?');
-    await expect(faqItems.nth(1)).toContainText('5.');
-    await expect(faqItems.nth(2)).toContainText('7.');
+    // FAQ section verification - commented out for now
+    // // Verify FAQs are displayed separately
+    // const faqSection = messageContent.locator('.faq-section');
+    // await expect(faqSection).toBeVisible();
+    //
+    // // Check FAQ title
+    // await expect(faqSection.locator('.faq-title')).toHaveText('Related FAQs:');
+    //
+    // // Check FAQ items
+    // const faqItems = faqSection.locator('.faq-item-static');
+    // await expect(faqItems).toHaveCount(3);
+    //
+    // // Verify FAQ content
+    // await expect(faqItems.nth(0)).toContainText('Apakah MySTI?');
+    // await expect(faqItems.nth(1)).toContainText('Mengapa MySTI diwujudkan?');
+    // await expect(faqItems.nth(2)).toContainText('Apakah objektif utama program MySTI?');
 
     console.log('✅ Test passed: Text displayed correctly, no JSON format');
   });

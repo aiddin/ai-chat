@@ -20,7 +20,7 @@ export default function Home() {
         api-url={apiUrl}
         session-id="demo-session"
         title="AI Assistant"
-        theme="dark"
+        theme="light"
         mode="widget"
         welcome-message="Hai, bagaimana saya boleh bantu?"
         welcome-subtitle="Sila tanya tentang permohonan atau apa-apa berkaitan MySTI"

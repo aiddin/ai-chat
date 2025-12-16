@@ -16,11 +16,12 @@ test.describe('CDN Examples', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          response: `Mock response to: "${postData.question}"`,
-          faqs_used: [
-            { "no.": "1", question: "How do I get started?" },
-            { "no.": "2", question: "What features are available?" }
-          ]
+          response: `Mock response to: "${postData.question}"`
+          // FAQ functionality - commented out for now
+          // faqs_used: [
+          //   { "no.": "1", question: "How do I get started?" },
+          //   { "no.": "2", question: "What features are available?" }
+          // ]
         })
       });
     });
@@ -82,37 +83,38 @@ test.describe('CDN Examples', () => {
     }
   });
 
-  test('local-test.html - should handle FAQ clicks', async ({ page }) => {
-    const filePath = resolve(__dirname, '../examples/local-test.html');
-    await page.goto(`file://${filePath}`);
-
-    await page.waitForSelector('ai-chat', { timeout: 10000 });
-    const chatComponent = page.locator('ai-chat');
-    const shadowRoot = await chatComponent.evaluateHandle((el) => el.shadowRoot);
-
-    // Send initial message to get FAQs
-    const inputField = await shadowRoot.$('input[type="text"]');
-    if (inputField) {
-      await inputField.type('Test question');
-      const sendButton = await shadowRoot.$('button[type="submit"]');
-      if (sendButton) {
-        await sendButton.click();
-        await page.waitForTimeout(1500);
-
-        // Check if FAQs appear
-        const faqItems = await shadowRoot.$$('.faq-item');
-        if (faqItems.length > 0) {
-          console.log(`✅ Found ${faqItems.length} FAQ items`);
-
-          // Click first FAQ
-          await faqItems[0].click();
-          await page.waitForTimeout(1000);
-
-          console.log('✅ FAQ click handled successfully');
-        }
-      }
-    }
-  });
+  // FAQ click test - commented out for now
+  // test('local-test.html - should handle FAQ clicks', async ({ page }) => {
+  //   const filePath = resolve(__dirname, '../examples/local-test.html');
+  //   await page.goto(`file://${filePath}`);
+  //
+  //   await page.waitForSelector('ai-chat', { timeout: 10000 });
+  //   const chatComponent = page.locator('ai-chat');
+  //   const shadowRoot = await chatComponent.evaluateHandle((el) => el.shadowRoot);
+  //
+  //   // Send initial message to get FAQs
+  //   const inputField = await shadowRoot.$('input[type="text"]');
+  //   if (inputField) {
+  //     await inputField.type('Test question');
+  //     const sendButton = await shadowRoot.$('button[type="submit"]');
+  //     if (sendButton) {
+  //       await sendButton.click();
+  //       await page.waitForTimeout(1500);
+  //
+  //       // Check if FAQs appear
+  //       const faqItems = await shadowRoot.$$('.faq-item-static');
+  //       if (faqItems.length > 0) {
+  //         console.log(`✅ Found ${faqItems.length} FAQ items`);
+  //
+  //         // Click first FAQ
+  //         await faqItems[0].click();
+  //         await page.waitForTimeout(1000);
+  //
+  //         console.log('✅ FAQ click handled successfully');
+  //       }
+  //     }
+  //   }
+  // });
 
   test('local-test.html - should support theme attribute', async ({ page }) => {
     const filePath = resolve(__dirname, '../examples/local-test.html');

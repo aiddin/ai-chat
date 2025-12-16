@@ -109,6 +109,15 @@ exports.AIChat = class AIChat extends lit.LitElement {
     super.connectedCallback();
     if (this.initialMessages && this.initialMessages.length > 0) {
       this.messages = [...this.initialMessages];
+    } else if (this.welcomeMessage) {
+      const welcomeText = this.welcomeSubtitle ? `${this.welcomeMessage}
+
+${this.welcomeSubtitle}` : this.welcomeMessage;
+      this.messages = [{
+        id: "welcome-" + Date.now(),
+        role: "assistant",
+        content: welcomeText
+      }];
     }
   }
   updated(changedProperties) {
@@ -164,7 +173,6 @@ exports.AIChat = class AIChat extends lit.LitElement {
       const data = await response.json();
       console.log("\u{1F50D} Raw API response:", data);
       let responseText = "No response from agent";
-      let faqs = void 0;
       let suggestedQuestions = void 0;
       if (data && typeof data === "object" && data.response && typeof data.response === "string") {
         console.log("\u{1F4DD} data.response type:", typeof data.response);
@@ -177,14 +185,11 @@ exports.AIChat = class AIChat extends lit.LitElement {
             console.log("\u2705 Parsed inner data with JSON.parse");
             if (innerData && innerData.response && typeof innerData.response === "string") {
               responseText = innerData.response;
-              faqs = innerData.faq_used || innerData.faqs_used || void 0;
               suggestedQuestions = innerData.suggested_follow_ups || innerData.suggested_questions || void 0;
               console.log("\u2705 Extracted text length:", responseText.length);
-              console.log("\u2705 Extracted FAQs count:", faqs?.length || 0);
               console.log("\u2705 Extracted suggested questions count:", suggestedQuestions?.length || 0);
             } else {
               responseText = data.response;
-              faqs = data.faq_used || data.faqs_used || void 0;
               suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
             }
           } catch (parseError) {
@@ -197,26 +202,6 @@ exports.AIChat = class AIChat extends lit.LitElement {
             } else {
               console.error("\u274C Could not extract response");
               responseText = "Error: Could not parse response";
-            }
-            const faqsPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[^\]]*\])/s;
-            const faqsMatch = data.response.match(faqsPattern);
-            if (faqsMatch) {
-              try {
-                faqs = JSON.parse(faqsMatch[1]);
-                console.log("\u2705 Extracted FAQs, count:", faqs?.length || 0);
-              } catch {
-                console.log("\u26A0\uFE0F Could not parse FAQs, trying multiline...");
-                const faqsMultiPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
-                const faqsMultiMatch = data.response.match(faqsMultiPattern);
-                if (faqsMultiMatch) {
-                  try {
-                    faqs = JSON.parse(faqsMultiMatch[1]);
-                    console.log("\u2705 Extracted multi-line FAQs, count:", faqs?.length || 0);
-                  } catch {
-                    faqs = void 0;
-                  }
-                }
-              }
             }
             const suggestedPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[^\]]*\])/s;
             const suggestedMatch = data.response.match(suggestedPattern);
@@ -242,7 +227,6 @@ exports.AIChat = class AIChat extends lit.LitElement {
         } else {
           console.log("\u{1F4C4} Direct text response (not JSON)");
           responseText = data.response;
-          faqs = data.faq_used || data.faqs_used || void 0;
           suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
         }
       } else if (typeof data === "string") {
@@ -251,18 +235,16 @@ exports.AIChat = class AIChat extends lit.LitElement {
       } else if (data && typeof data === "object") {
         console.warn("\u26A0\uFE0F Unexpected format, using fallback");
         responseText = data.message || data.answer || "Error: Unexpected response format";
-        faqs = data.faq_used || data.faqs_used || void 0;
         suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
       }
       console.log("\u{1F3AF} Final responseText length:", responseText.length);
       console.log("\u{1F3AF} Final responseText preview:", responseText.substring(0, 100));
-      console.log("\u{1F3AF} Final FAQs:", faqs);
       console.log("\u{1F3AF} Final suggested questions:", suggestedQuestions);
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: responseText,
-        faqs,
+        // faqs: faqs,  // Commented out - FAQ functionality disabled
         suggestedQuestions
       };
       this.messages = [...this.messages, assistantMessage];
@@ -308,20 +290,6 @@ Please check your API endpoint configuration.`
       <!-- Messages Area -->
       <div class="messages-area" style="--user-message-bg: ${this.userMessageBg}; --bot-message-bg: ${this.botMessageBg}; --primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover}; ${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}');` : ""}">
         <div class="messages-container">
-          ${this.messages.length === 0 ? lit.html`
-            <div class="empty-state">
-              <div class="empty-state-avatar">
-                ${this.botAvatarUrl ? lit.html`<img src="${this.botAvatarUrl}" alt="Bot" class="empty-state-avatar-image" />` : lit.html`<svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>`}
-              </div>
-              <div class="empty-state-content">
-                <p class="empty-state-message">${this.welcomeMessage}</p>
-                ${this.welcomeSubtitle ? lit.html`<p class="empty-state-subtitle">${this.welcomeSubtitle}</p>` : ""}
-              </div>
-            </div>
-          ` : ""}
-
           ${repeat_js.repeat(this.messages, (msg) => msg.id, (msg) => lit.html`
             <div class=${classMap_js.classMap({
       message: true,
@@ -333,7 +301,8 @@ Please check your API endpoint configuration.`
               </div>
               <div class="message-content">
                 <div class="message-text">${unsafeHtml_js.unsafeHTML(this.formatMessageContent(msg.content))}</div>
-                ${msg.role === "assistant" && msg.faqs && msg.faqs.length > 0 ? lit.html`
+                <!-- FAQ section - commented out for now -->
+                <!-- ${msg.role === "assistant" && msg.faqs && msg.faqs.length > 0 ? lit.html`
                   <div class="faq-section">
                     <p class="faq-title">Related FAQs:</p>
                     <ul class="faq-list">
@@ -344,7 +313,7 @@ Please check your API endpoint configuration.`
                       `)}
                     </ul>
                   </div>
-                ` : ""}
+                ` : ""} -->
                 ${msg.role === "assistant" && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? lit.html`
                   <div class="faq-section">
                     <p class="faq-title">Suggested Questions:</p>
@@ -382,7 +351,7 @@ Please check your API endpoint configuration.`
           <input
             type="text"
             class="input-field"
-            placeholder="Type your message..."
+            placeholder="Taip mesej anda..."
             .value=${this.input}
             @input=${this.handleInput}
             ?disabled=${this.isLoading}
@@ -1034,7 +1003,8 @@ exports.AIChat.styles = lit.css`
       border-color: #3f3f46;
     }
 
-    .faq-item-static {
+    /* FAQ static item styles - commented out for now */
+    /* .faq-item-static {
       font-size: 0.875rem;
       color: #6B7280;
       padding: 0;
@@ -1045,7 +1015,7 @@ exports.AIChat.styles = lit.css`
 
     :host([theme="dark"]) .faq-item-static {
       color: #9CA3AF;
-    }
+    } */
 
     .loading {
       display: flex;

@@ -13,7 +13,7 @@ A modern, customizable chat widget built with Lit web components. Features a cle
 - 🎯 **TypeScript Support** - Full type safety
 - 📝 **List Formatting** - Automatic rendering of bulleted and numbered lists
 - 💡 **Suggested Questions** - Clickable follow-up questions for better UX
-- 🔗 **Related FAQs** - Display related FAQ references
+<!-- - 🔗 **Related FAQs** - Display related FAQ references (commented out) -->
 - 👋 **Customizable Welcome Message** - Set custom greeting with optional subtitle
 
 ## Quick Start
@@ -122,15 +122,19 @@ import '@a.izzuddin/ai-chat';
 ```
 
 #### Custom Welcome Message
+The welcome message appears as the first assistant message in the chat instead of a large empty state.
+
 ```html
 <ai-chat
   api-url="https://api.example.com"
   session-id="user-123"
   title="AI Assistant"
-  welcome-message="Hello! How may I assist you?"
-  welcome-subtitle="Ask me anything about our services">
+  welcome-message="Hai, bagaimana saya boleh bantu?"
+  welcome-subtitle="Sila tanya tentang permohonan atau apa-apa berkaitan MySTI">
 </ai-chat>
 ```
+
+The welcome message and subtitle will be combined and displayed as a regular chat message from the assistant.
 
 ### Dark Mode
 ```html
@@ -159,8 +163,8 @@ import '@a.izzuddin/ai-chat';
 | `bot-message-bg` | string | '#F5F5F5' | Bot message background |
 | `bot-avatar-url` | string | '' | Custom bot avatar image |
 | `background-image-url` | string | '' | Chat background image |
-| `welcome-message` | string | 'How can I help you today?' | Initial welcome message shown when chat is empty |
-| `welcome-subtitle` | string | '' | Optional subtitle text shown below welcome message |
+| `welcome-message` | string | 'How can I help you today?' | Initial message from assistant (appears as first chat message) |
+| `welcome-subtitle` | string | '' | Optional subtitle added to welcome message |
 
 ## API Integration
 
@@ -178,12 +182,6 @@ Expected response format:
 ```json
 {
   "response": "string",
-  "faq_used": [
-    {
-      "no.": "1",
-      "question": "What is MySTI?"
-    }
-  ],
   "suggested_follow_ups": [
     "What are the main objectives of the program?",
     "How can companies apply?",
@@ -192,13 +190,26 @@ Expected response format:
 }
 ```
 
+<!-- FAQ functionality - commented out for now
+{
+  "response": "string",
+  "faq_used": [
+    {
+      "no.": "1",
+      "question": "What is MySTI?"
+    }
+  ],
+  "suggested_follow_ups": [...]
+}
+-->
+
 **Supported field variations:**
-- `faq_used` or `faqs_used` for related FAQs
+<!-- - `faq_used` or `faqs_used` for related FAQs (commented out) -->
 - `suggested_follow_ups` or `suggested_questions` for clickable follow-up questions
 
 ### Response Behavior
 
-- **Related FAQs** - Displayed as non-clickable text references
+<!-- - **Related FAQs** - Displayed as non-clickable text references (commented out) -->
 - **Suggested Questions** - Displayed as clickable buttons that send the question when clicked
 - **List Formatting** - Messages support automatic list rendering:
   - Unordered lists: Lines starting with `-`, `*`, or `•`

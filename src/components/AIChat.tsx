@@ -8,14 +8,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Loader2, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface FAQ {
-  "no.": string;
-  question: string;
-}
+// FAQ functionality - commented out for now
+// export interface FAQ {
+//   "no.": string;
+//   question: string;
+// }
 
 export interface StructuredResponse {
   response: string;
-  faqs_used?: FAQ[];
+  // faqs_used?: FAQ[];  // Commented out - FAQ functionality disabled
 }
 
 export interface Message {
@@ -44,30 +45,31 @@ export interface AIChatProps {
   onError?: (error: Error) => void;
 }
 
-function FAQList({ faqs }: { faqs: FAQ[] }) {
-  if (!faqs || faqs.length === 0) return null;
-
-  return (
-    <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
-      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-        Related FAQs:
-      </p>
-      <ul className="space-y-2">
-        {faqs.map((faq) => (
-          <li
-            key={faq["no."]}
-            className="text-sm text-zinc-600 dark:text-zinc-400 flex gap-2"
-          >
-            <span className="font-medium text-zinc-800 dark:text-zinc-200">
-              {faq["no."]}.
-            </span>
-            <span>{faq.question}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+// FAQ List component - commented out for now
+// function FAQList({ faqs }: { faqs: FAQ[] }) {
+//   if (!faqs || faqs.length === 0) return null;
+//
+//   return (
+//     <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+//       <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+//         Related FAQs:
+//       </p>
+//       <ul className="space-y-2">
+//         {faqs.map((faq) => (
+//           <li
+//             key={faq["no."]}
+//             className="text-sm text-zinc-600 dark:text-zinc-400 flex gap-2"
+//           >
+//             <span className="font-medium text-zinc-800 dark:text-zinc-200">
+//               {faq["no."]}.
+//             </span>
+//             <span>{faq.question}</span>
+//           </li>
+//         ))}
+//       </ul>
+//     </div>
+//   );
+// }
 
 export function AIChat({
   apiUrl,
@@ -79,7 +81,17 @@ export function AIChat({
   onResponseReceived,
   onError,
 }: AIChatProps) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Initialize with welcome message if no initial messages
+    if (initialMessages.length === 0) {
+      return [{
+        id: 'welcome-' + Date.now(),
+        role: 'assistant',
+        content: 'How can I help you today?',
+      }];
+    }
+    return initialMessages;
+  });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -130,7 +142,7 @@ export function AIChat({
         responseText = data.response;
         structuredData = {
           response: data.response,
-          faqs_used: data.faqs_used || [],
+          // faqs_used: data.faqs_used || [],  // Commented out - FAQ functionality disabled
         };
       } else {
         // Fallback: display the whole response
@@ -176,12 +188,6 @@ export function AIChat({
       {/* Messages Area */}
       <ScrollArea className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {messages.length === 0 && (
-            <div className="text-center text-zinc-500 dark:text-zinc-400 mt-20">
-              <p className="text-2xl font-medium">How can I help you today?</p>
-            </div>
-          )}
-
           {messages.map((message) => (
             <div
               key={message.id}
@@ -205,9 +211,10 @@ export function AIChat({
                 )}
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
-                {message.role === "assistant" && message.structuredData?.faqs_used && (
+                {/* FAQ display - commented out for now */}
+                {/* {message.role === "assistant" && message.structuredData?.faqs_used && (
                   <FAQList faqs={message.structuredData.faqs_used} />
-                )}
+                )} */}
               </div>
             </div>
           ))}
@@ -234,7 +241,7 @@ export function AIChat({
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your message..."
+              placeholder="Taip mesej anda..."
               disabled={isLoading}
               className="flex-1 text-base h-12"
               autoFocus
