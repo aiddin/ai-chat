@@ -142,7 +142,16 @@ declare class AIChat extends LitElement {
     };
     constructor();
     private toggleWidget;
+    /**
+     * Clear all chat messages and reset to welcome message
+     * @public
+     */
+    clearChat(): void;
     private lightenColor;
+    private getStorageKey;
+    private saveMessagesToStorage;
+    private loadMessagesFromStorage;
+    private clearMessagesFromStorage;
     private formatMessageContent;
     connectedCallback(): void;
     updated(changedProperties: PropertyValues): void;

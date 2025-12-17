@@ -754,6 +754,17 @@
             },
             {
               "kind": "method",
+              "name": "clearChat",
+              "privacy": "public",
+              "return": {
+                "type": {
+                  "text": "void"
+                }
+              },
+              "description": "Clear all chat messages and reset to welcome message"
+            },
+            {
+              "kind": "method",
               "name": "lightenColor",
               "privacy": "private",
               "return": {
@@ -776,6 +787,46 @@
                   }
                 }
               ]
+            },
+            {
+              "kind": "method",
+              "name": "getStorageKey",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "string"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "saveMessagesToStorage",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "void"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "loadMessagesFromStorage",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "Message[] | null"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "clearMessagesFromStorage",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "void"
+                }
+              }
             },
             {
               "kind": "method",

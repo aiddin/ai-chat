@@ -889,6 +889,28 @@ export class AIChat extends LitElement {
     this.isOpen = !this.isOpen;
   }
 
+  /**
+   * Clear all chat messages and reset to welcome message
+   * @public
+   */
+  public clearChat(): void {
+    this.clearMessagesFromStorage();
+
+    if (this.welcomeMessage) {
+      const welcomeText = this.welcomeSubtitle
+        ? `${this.welcomeMessage}\n\n${this.welcomeSubtitle}`
+        : this.welcomeMessage;
+
+      this.messages = [{
+        id: 'welcome-' + Date.now(),
+        role: 'assistant',
+        content: welcomeText,
+      }];
+    } else {
+      this.messages = [];
+    }
+  }
+
   private lightenColor(hex: string, percent: number = 15): string {
     // Remove # if present
     hex = hex.replace('#', '');
@@ -905,6 +927,41 @@ export class AIChat extends LitElement {
 
     // Convert back to hex
     return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+  }
+
+  private getStorageKey(): string {
+    return `ai-chat-messages-${this.sessionId}`;
+  }
+
+  private saveMessagesToStorage(): void {
+    try {
+      const storageKey = this.getStorageKey();
+      localStorage.setItem(storageKey, JSON.stringify(this.messages));
+    } catch (error) {
+      console.warn('Failed to save messages to localStorage:', error);
+    }
+  }
+
+  private loadMessagesFromStorage(): Message[] | null {
+    try {
+      const storageKey = this.getStorageKey();
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        return JSON.parse(saved) as Message[];
+      }
+    } catch (error) {
+      console.warn('Failed to load messages from localStorage:', error);
+    }
+    return null;
+  }
+
+  private clearMessagesFromStorage(): void {
+    try {
+      const storageKey = this.getStorageKey();
+      localStorage.removeItem(storageKey);
+    } catch (error) {
+      console.warn('Failed to clear messages from localStorage:', error);
+    }
   }
 
   private formatMessageContent(content: string): string {
@@ -1018,8 +1075,15 @@ export class AIChat extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+
+    // Try to load messages from localStorage first
+    const savedMessages = this.loadMessagesFromStorage();
+
     if (this.initialMessages && this.initialMessages.length > 0) {
       this.messages = [...this.initialMessages];
+    } else if (savedMessages && savedMessages.length > 0) {
+      // Restore saved messages from localStorage
+      this.messages = savedMessages;
     } else if (this.welcomeMessage) {
       // Add welcome message as initial assistant message
       const welcomeText = this.welcomeSubtitle
@@ -1038,6 +1102,8 @@ export class AIChat extends LitElement {
     super.updated(changedProperties);
     if (changedProperties.has('messages')) {
       this.scrollToBottom();
+      // Save messages to localStorage whenever they change
+      this.saveMessagesToStorage();
     }
   }
 

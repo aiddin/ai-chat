@@ -45,6 +45,25 @@ exports.AIChat = class AIChat extends lit.LitElement {
   toggleWidget() {
     this.isOpen = !this.isOpen;
   }
+  /**
+   * Clear all chat messages and reset to welcome message
+   * @public
+   */
+  clearChat() {
+    this.clearMessagesFromStorage();
+    if (this.welcomeMessage) {
+      const welcomeText = this.welcomeSubtitle ? `${this.welcomeMessage}
+
+${this.welcomeSubtitle}` : this.welcomeMessage;
+      this.messages = [{
+        id: "welcome-" + Date.now(),
+        role: "assistant",
+        content: welcomeText
+      }];
+    } else {
+      this.messages = [];
+    }
+  }
   lightenColor(hex, percent = 15) {
     hex = hex.replace("#", "");
     const r = parseInt(hex.substring(0, 2), 16);
@@ -54,6 +73,37 @@ exports.AIChat = class AIChat extends lit.LitElement {
     const newG = Math.min(255, Math.round(g + (255 - g) * (percent / 100)));
     const newB = Math.min(255, Math.round(b + (255 - b) * (percent / 100)));
     return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
+  }
+  getStorageKey() {
+    return `ai-chat-messages-${this.sessionId}`;
+  }
+  saveMessagesToStorage() {
+    try {
+      const storageKey = this.getStorageKey();
+      localStorage.setItem(storageKey, JSON.stringify(this.messages));
+    } catch (error) {
+      console.warn("Failed to save messages to localStorage:", error);
+    }
+  }
+  loadMessagesFromStorage() {
+    try {
+      const storageKey = this.getStorageKey();
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.warn("Failed to load messages from localStorage:", error);
+    }
+    return null;
+  }
+  clearMessagesFromStorage() {
+    try {
+      const storageKey = this.getStorageKey();
+      localStorage.removeItem(storageKey);
+    } catch (error) {
+      console.warn("Failed to clear messages from localStorage:", error);
+    }
   }
   formatMessageContent(content) {
     const escapeHtml = (text) => {
@@ -138,8 +188,11 @@ exports.AIChat = class AIChat extends lit.LitElement {
   }
   connectedCallback() {
     super.connectedCallback();
+    const savedMessages = this.loadMessagesFromStorage();
     if (this.initialMessages && this.initialMessages.length > 0) {
       this.messages = [...this.initialMessages];
+    } else if (savedMessages && savedMessages.length > 0) {
+      this.messages = savedMessages;
     } else if (this.welcomeMessage) {
       const welcomeText = this.welcomeSubtitle ? `${this.welcomeMessage}
 
@@ -155,6 +208,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
     super.updated(changedProperties);
     if (changedProperties.has("messages")) {
       this.scrollToBottom();
+      this.saveMessagesToStorage();
     }
   }
   scrollToBottom() {
