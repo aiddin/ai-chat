@@ -69,7 +69,18 @@
     {
       "kind": "javascript-module",
       "path": "dist/index.js",
-      "declarations": [],
+      "declarations": [
+        {
+          "kind": "variable",
+          "name": "faqs",
+          "default": "void 0"
+        },
+        {
+          "kind": "variable",
+          "name": "suggestedQuestions",
+          "default": "void 0"
+        }
+      ],
       "exports": []
     },
     {
@@ -1077,7 +1088,7 @@
           "name": "AIChat",
           "parameters": [
             {
-              "name": "{\n  apiUrl,\n  sessionId = \"default-session\",\n  title = \"My AI Agent\",\n  initialMessages = [],\n  className,\n  onMessageSent,\n  onResponseReceived,\n  onError,\n}",
+              "name": "{\r\n  apiUrl,\r\n  sessionId = \"default-session\",\r\n  title = \"My AI Agent\",\r\n  initialMessages = [],\r\n  className,\r\n  onMessageSent,\r\n  onResponseReceived,\r\n  onError,\r\n}",
               "type": {
                 "text": "AIChatProps"
               }

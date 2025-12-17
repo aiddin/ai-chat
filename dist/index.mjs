@@ -14,7 +14,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-var VERSION = "0.2.8";
+var VERSION = "0.2.9";
 var AIChat = class extends LitElement {
   constructor() {
     super();
@@ -109,7 +109,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       div.textContent = text;
       return div.innerHTML;
     };
-    let processedContent = content.replace(/([:\w])\s*(\d+\.\s+)/g, "$1\n$2");
+    let processedContent = content.replace(/([^\n])\s*(\d+\.\s+)/g, "$1\n$2");
     processedContent = processedContent.replace(/(\d+\.\s+[^0-9]+?)(?=\s+\d+\.\s+|\s*$)/g, "$1\n");
     processedContent = processedContent.replace(/(-\s+[^-]+?)(?=\s+-\s+|\s*$)/g, "$1\n");
     const lines = processedContent.split("\n");
@@ -260,6 +260,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       const data = await response.json();
       console.log("\u{1F50D} Raw API response:", data);
       let responseText = "No response from agent";
+      let faqs = void 0;
       let suggestedQuestions = void 0;
       if (data && typeof data === "object" && data.response && typeof data.response === "string") {
         console.log("\u{1F4DD} data.response type:", typeof data.response);
@@ -272,11 +273,14 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
             console.log("\u2705 Parsed inner data with JSON.parse");
             if (innerData && innerData.response && typeof innerData.response === "string") {
               responseText = innerData.response;
+              faqs = innerData.faq_used || innerData.faqs_used || void 0;
               suggestedQuestions = innerData.suggested_follow_ups || innerData.suggested_questions || void 0;
               console.log("\u2705 Extracted text length:", responseText.length);
+              console.log("\u2705 Extracted FAQs count:", faqs?.length || 0);
               console.log("\u2705 Extracted suggested questions count:", suggestedQuestions?.length || 0);
             } else {
               responseText = data.response;
+              faqs = data.faq_used || data.faqs_used || void 0;
               suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
             }
           } catch (parseError) {
@@ -289,6 +293,26 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
             } else {
               console.error("\u274C Could not extract response");
               responseText = "Error: Could not parse response";
+            }
+            const faqsPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[^\]]*\])/s;
+            const faqsMatch = data.response.match(faqsPattern);
+            if (faqsMatch) {
+              try {
+                faqs = JSON.parse(faqsMatch[1]);
+                console.log("\u2705 Extracted FAQs, count:", faqs?.length || 0);
+              } catch {
+                console.log("\u26A0\uFE0F Could not parse FAQs, trying multiline...");
+                const faqsMultiPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+                const faqsMultiMatch = data.response.match(faqsMultiPattern);
+                if (faqsMultiMatch) {
+                  try {
+                    faqs = JSON.parse(faqsMultiMatch[1]);
+                    console.log("\u2705 Extracted multi-line FAQs, count:", faqs?.length || 0);
+                  } catch {
+                    faqs = void 0;
+                  }
+                }
+              }
             }
             const suggestedPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[^\]]*\])/s;
             const suggestedMatch = data.response.match(suggestedPattern);
@@ -314,6 +338,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
         } else {
           console.log("\u{1F4C4} Direct text response (not JSON)");
           responseText = data.response;
+          faqs = data.faq_used || data.faqs_used || void 0;
           suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
         }
       } else if (typeof data === "string") {
@@ -322,16 +347,18 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       } else if (data && typeof data === "object") {
         console.warn("\u26A0\uFE0F Unexpected format, using fallback");
         responseText = data.message || data.answer || "Error: Unexpected response format";
+        faqs = data.faq_used || data.faqs_used || void 0;
         suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
       }
       console.log("\u{1F3AF} Final responseText length:", responseText.length);
       console.log("\u{1F3AF} Final responseText preview:", responseText.substring(0, 100));
+      console.log("\u{1F3AF} Final FAQs:", faqs);
       console.log("\u{1F3AF} Final suggested questions:", suggestedQuestions);
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: responseText,
-        // faqs: faqs,  // Commented out - FAQ functionality disabled
+        faqs,
         suggestedQuestions
       };
       this.messages = [...this.messages, assistantMessage];
@@ -390,8 +417,7 @@ Please check your API endpoint configuration.`
               </div>
               <div class="message-content">
                 <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
-                <!-- FAQ section - commented out for now -->
-                <!-- ${msg.role === "assistant" && msg.faqs && msg.faqs.length > 0 ? html`
+                ${msg.role === "assistant" && msg.faqs && msg.faqs.length > 0 ? html`
                   <div class="faq-section">
                     <p class="faq-title">Related FAQs:</p>
                     <ul class="faq-list">
@@ -402,7 +428,7 @@ Please check your API endpoint configuration.`
                       `)}
                     </ul>
                   </div>
-                ` : ""} -->
+                ` : ""}
                 ${msg.role === "assistant" && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? html`
                   <div class="faq-section">
                     <p class="faq-title">Suggested Questions:</p>
