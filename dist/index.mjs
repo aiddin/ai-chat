@@ -210,13 +210,13 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
     }
   }
   scrollToBottom() {
-    requestAnimationFrame(() => {
-      if (this.lastUserMessageRef) {
-        this.lastUserMessageRef.scrollIntoView({ behavior: "smooth", block: "start" });
-      } else {
-        this.messagesEndRef?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      const userMessages = this.shadowRoot?.querySelectorAll(".message.user");
+      if (userMessages && userMessages.length > 0) {
+        const lastUserMessage = userMessages[userMessages.length - 1];
+        lastUserMessage.scrollIntoView({ behavior: "smooth", block: "start" });
       }
-    });
+    }, 100);
   }
   handleInput(e) {
     this.input = e.target.value;
@@ -268,7 +268,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
         if (trimmedResponse.startsWith("{") || trimmedResponse.startsWith("[")) {
           console.log("\u{1F504} Detected stringified JSON, parsing...");
           try {
-            let innerData = JSON.parse(data.response);
+            const innerData = JSON.parse(data.response);
             console.log("\u2705 Parsed inner data with JSON.parse");
             if (innerData && innerData.response && typeof innerData.response === "string") {
               responseText = innerData.response;
@@ -377,16 +377,13 @@ Please check your API endpoint configuration.`
       <!-- Messages Area -->
       <div class="messages-area" style="--user-message-bg: ${this.userMessageBg}; --bot-message-bg: ${this.botMessageBg}; --primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover}; ${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}');` : ""}">
         <div class="messages-container">
-          ${repeat(this.messages, (msg) => msg.id, (msg) => {
-      const isLastUserMessage = msg.role === "user" && this.messages.filter((m) => m.role === "user").pop()?.id === msg.id;
-      return html`
+          ${repeat(this.messages, (msg) => msg.id, (msg) => html`
             <div
               class=${classMap({
-        message: true,
-        user: msg.role === "user",
-        assistant: msg.role === "assistant"
-      })}
-              ${isLastUserMessage ? (el) => this.lastUserMessageRef = el : ""}
+      message: true,
+      user: msg.role === "user",
+      assistant: msg.role === "assistant"
+    })}
             >
               <div class="avatar">
                 ${msg.role === "user" ? "U" : this.botAvatarUrl ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />` : "AI"}
@@ -420,8 +417,7 @@ Please check your API endpoint configuration.`
                 ` : ""}
               </div>
             </div>
-          `;
-    })}
+          `)}
 
           ${this.isLoading ? html`
             <div class="loading">
@@ -433,8 +429,6 @@ Please check your API endpoint configuration.`
               </div>
             </div>
           ` : ""}
-
-          <div ${(el) => this.messagesEndRef = el}></div>
         </div>
       </div>
 

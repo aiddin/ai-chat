@@ -837,8 +837,6 @@ export class AIChat extends LitElement {
   @state()
   private declare isOpen: boolean;
 
-  private messagesEndRef?: HTMLDivElement;
-  private lastUserMessageRef?: HTMLDivElement;
 
   static override properties = {
     apiUrl: { type: String, attribute: 'api-url' },
@@ -1108,14 +1106,15 @@ export class AIChat extends LitElement {
   }
 
   private scrollToBottom() {
-    requestAnimationFrame(() => {
-      // Scroll to last user message if available, otherwise scroll to bottom
-      if (this.lastUserMessageRef) {
-        this.lastUserMessageRef.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        this.messagesEndRef?.scrollIntoView({ behavior: 'smooth' });
+    // Use setTimeout to ensure Lit has finished rendering
+    setTimeout(() => {
+      // Find the last user message and scroll to it
+      const userMessages = this.shadowRoot?.querySelectorAll('.message.user');
+      if (userMessages && userMessages.length > 0) {
+        const lastUserMessage = userMessages[userMessages.length - 1] as HTMLElement;
+        lastUserMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    });
+    }, 100);
   }
 
   private handleInput(e: Event) {
@@ -1190,7 +1189,7 @@ export class AIChat extends LitElement {
 
           try {
             // First attempt: standard JSON.parse
-            let innerData = JSON.parse(data.response);
+            const innerData = JSON.parse(data.response);
             console.log('✅ Parsed inner data with JSON.parse');
 
             if (innerData && innerData.response && typeof innerData.response === 'string') {
@@ -1355,19 +1354,13 @@ export class AIChat extends LitElement {
       <!-- Messages Area -->
       <div class="messages-area" style="--user-message-bg: ${this.userMessageBg}; --bot-message-bg: ${this.botMessageBg}; --primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover}; ${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}');` : ''}">
         <div class="messages-container">
-          ${repeat(this.messages, (msg) => msg.id, (msg) => {
-            // Find the last user message
-            const isLastUserMessage = msg.role === 'user' &&
-              this.messages.filter(m => m.role === 'user').pop()?.id === msg.id;
-
-            return html`
+          ${repeat(this.messages, (msg) => msg.id, (msg) => html`
             <div
               class=${classMap({
                 message: true,
                 user: msg.role === 'user',
                 assistant: msg.role === 'assistant'
               })}
-              ${isLastUserMessage ? (el: Element) => this.lastUserMessageRef = el as HTMLDivElement : ''}
             >
               <div class="avatar">
                 ${msg.role === 'user'
@@ -1405,8 +1398,7 @@ export class AIChat extends LitElement {
                 ` : ''}
               </div>
             </div>
-          `;
-          })}
+          `)}
 
           ${this.isLoading ? html`
             <div class="loading">
@@ -1420,8 +1412,6 @@ export class AIChat extends LitElement {
               </div>
             </div>
           ` : ''}
-
-          <div ${(el: Element) => this.messagesEndRef = el as HTMLDivElement}></div>
         </div>
       </div>
 
