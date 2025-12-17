@@ -71,6 +71,7 @@ declare class AIChat extends LitElement {
     private isLoading;
     private isOpen;
     private messagesEndRef?;
+    private lastUserMessageRef?;
     static properties: {
         apiUrl: {
             type: StringConstructor;

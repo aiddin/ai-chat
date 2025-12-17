@@ -594,11 +594,13 @@ export class AIChat extends LitElement {
       margin: 0.5rem 0;
       padding-left: 1.5rem;
       white-space: normal;
+      list-style-position: outside;
     }
 
     .message-text li {
       margin: 0.25rem 0;
       white-space: normal;
+      display: list-item;
     }
 
     .message-text ul {
@@ -606,6 +608,12 @@ export class AIChat extends LitElement {
     }
 
     .message-text ol {
+      list-style-type: decimal;
+      counter-reset: list-counter;
+    }
+
+    .message-text ol li {
+      display: list-item;
       list-style-type: decimal;
     }
 
@@ -830,6 +838,7 @@ export class AIChat extends LitElement {
   private declare isOpen: boolean;
 
   private messagesEndRef?: HTMLDivElement;
+  private lastUserMessageRef?: HTMLDivElement;
 
   static override properties = {
     apiUrl: { type: String, attribute: 'api-url' },
@@ -906,8 +915,11 @@ export class AIChat extends LitElement {
       return div.innerHTML;
     };
 
+    // Add line break before numbered lists that come after colons or other text
+    let processedContent = content.replace(/([:\w])\s*(\d+\.\s+)/g, '$1\n$2');
+
     // First, split inline numbered lists (1. 2. 3. pattern)
-    let processedContent = content.replace(/(\d+\.\s+[^0-9]+?)(?=\s+\d+\.\s+|\s*$)/g, '$1\n');
+    processedContent = processedContent.replace(/(\d+\.\s+[^0-9]+?)(?=\s+\d+\.\s+|\s*$)/g, '$1\n');
 
     // Split inline bullet lists (- pattern)
     processedContent = processedContent.replace(/(-\s+[^-]+?)(?=\s+-\s+|\s*$)/g, '$1\n');
@@ -917,6 +929,19 @@ export class AIChat extends LitElement {
     let formattedContent = '';
     let inList = false;
     let listType: 'ul' | 'ol' | null = null;
+    let orderedListCounter = 1; // Track the current numbered list counter
+
+    // Helper function to check if next non-empty line is a list item
+    const getNextListType = (startIndex: number): 'ul' | 'ol' | null => {
+      for (let j = startIndex + 1; j < lines.length; j++) {
+        const nextLine = lines[j].trim();
+        if (nextLine === '') continue; // Skip blank lines
+        if (nextLine.match(/^[-*•]\s+/)) return 'ul';
+        if (nextLine.match(/^\d+\.\s+/)) return 'ol';
+        return null; // Found non-list content
+      }
+      return null; // End of content
+    };
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -925,7 +950,7 @@ export class AIChat extends LitElement {
       // Check for unordered list (-, *, •)
       const unorderedMatch = trimmedLine.match(/^[-*•]\s+(.+)$/);
       // Check for ordered list (1., 2., etc.)
-      const orderedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
+      const orderedMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
 
       if (unorderedMatch) {
         if (!inList || listType !== 'ul') {
@@ -936,24 +961,48 @@ export class AIChat extends LitElement {
         }
         formattedContent += `<li>${escapeHtml(unorderedMatch[1])}</li>`;
       } else if (orderedMatch) {
+        const itemNumber = parseInt(orderedMatch[1], 10);
+        const itemText = orderedMatch[2];
+
         if (!inList || listType !== 'ol') {
           if (inList) formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
-          formattedContent += '<ol>';
+          // Use the start attribute to continue numbering from where we left off
+          // or reset to 1 if this is a new sequence starting with 1
+          if (itemNumber === 1) {
+            orderedListCounter = 1;
+            formattedContent += '<ol>';
+          } else {
+            formattedContent += `<ol start="${orderedListCounter}">`;
+          }
           inList = true;
           listType = 'ol';
         }
-        formattedContent += `<li>${escapeHtml(orderedMatch[1])}</li>`;
+        formattedContent += `<li value="${itemNumber}">${escapeHtml(itemText)}</li>`;
+        orderedListCounter = itemNumber + 1; // Track next number
       } else {
         // Not a list item
-        if (inList) {
-          formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
-          inList = false;
-          listType = null;
-        }
-        // Add regular line
         if (trimmedLine === '') {
-          formattedContent += '<br>';
+          // Blank line - check if next line continues the same list type
+          const nextListType = getNextListType(i);
+          if (inList && nextListType === listType) {
+            // Keep list open and add spacing within the list
+            formattedContent += '<li style="list-style: none; height: 0.5em;"></li>';
+          } else {
+            // Close list if we're in one
+            if (inList) {
+              formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
+              inList = false;
+              listType = null;
+            }
+            formattedContent += '<br>';
+          }
         } else {
+          // Non-blank, non-list content
+          if (inList) {
+            formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
+            inList = false;
+            listType = null;
+          }
           formattedContent += escapeHtml(line) + '\n';
         }
       }
@@ -994,7 +1043,12 @@ export class AIChat extends LitElement {
 
   private scrollToBottom() {
     requestAnimationFrame(() => {
-      this.messagesEndRef?.scrollIntoView({ behavior: 'smooth' });
+      // Scroll to last user message if available, otherwise scroll to bottom
+      if (this.lastUserMessageRef) {
+        this.lastUserMessageRef.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        this.messagesEndRef?.scrollIntoView({ behavior: 'smooth' });
+      }
     });
   }
 
@@ -1235,12 +1289,20 @@ export class AIChat extends LitElement {
       <!-- Messages Area -->
       <div class="messages-area" style="--user-message-bg: ${this.userMessageBg}; --bot-message-bg: ${this.botMessageBg}; --primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover}; ${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}');` : ''}">
         <div class="messages-container">
-          ${repeat(this.messages, (msg) => msg.id, (msg) => html`
-            <div class=${classMap({
-              message: true,
-              user: msg.role === 'user',
-              assistant: msg.role === 'assistant'
-            })}>
+          ${repeat(this.messages, (msg) => msg.id, (msg) => {
+            // Find the last user message
+            const isLastUserMessage = msg.role === 'user' &&
+              this.messages.filter(m => m.role === 'user').pop()?.id === msg.id;
+
+            return html`
+            <div
+              class=${classMap({
+                message: true,
+                user: msg.role === 'user',
+                assistant: msg.role === 'assistant'
+              })}
+              ${isLastUserMessage ? (el: Element) => this.lastUserMessageRef = el as HTMLDivElement : ''}
+            >
               <div class="avatar">
                 ${msg.role === 'user'
                   ? 'U'
@@ -1277,7 +1339,8 @@ export class AIChat extends LitElement {
                 ` : ''}
               </div>
             </div>
-          `)}
+          `;
+          })}
 
           ${this.isLoading ? html`
             <div class="loading">

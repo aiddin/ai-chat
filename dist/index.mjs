@@ -59,17 +59,29 @@ var AIChat = class extends LitElement {
       div.textContent = text;
       return div.innerHTML;
     };
-    let processedContent = content.replace(/(\d+\.\s+[^0-9]+?)(?=\s+\d+\.\s+|\s*$)/g, "$1\n");
+    let processedContent = content.replace(/([:\w])\s*(\d+\.\s+)/g, "$1\n$2");
+    processedContent = processedContent.replace(/(\d+\.\s+[^0-9]+?)(?=\s+\d+\.\s+|\s*$)/g, "$1\n");
     processedContent = processedContent.replace(/(-\s+[^-]+?)(?=\s+-\s+|\s*$)/g, "$1\n");
     const lines = processedContent.split("\n");
     let formattedContent = "";
     let inList = false;
     let listType = null;
+    let orderedListCounter = 1;
+    const getNextListType = (startIndex) => {
+      for (let j = startIndex + 1; j < lines.length; j++) {
+        const nextLine = lines[j].trim();
+        if (nextLine === "") continue;
+        if (nextLine.match(/^[-*•]\s+/)) return "ul";
+        if (nextLine.match(/^\d+\.\s+/)) return "ol";
+        return null;
+      }
+      return null;
+    };
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmedLine = line.trim();
       const unorderedMatch = trimmedLine.match(/^[-*•]\s+(.+)$/);
-      const orderedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
+      const orderedMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
       if (unorderedMatch) {
         if (!inList || listType !== "ul") {
           if (inList) formattedContent += listType === "ol" ? "</ol>" : "</ul>";
@@ -79,22 +91,40 @@ var AIChat = class extends LitElement {
         }
         formattedContent += `<li>${escapeHtml(unorderedMatch[1])}</li>`;
       } else if (orderedMatch) {
+        const itemNumber = parseInt(orderedMatch[1], 10);
+        const itemText = orderedMatch[2];
         if (!inList || listType !== "ol") {
           if (inList) formattedContent += listType === "ol" ? "</ol>" : "</ul>";
-          formattedContent += "<ol>";
+          if (itemNumber === 1) {
+            orderedListCounter = 1;
+            formattedContent += "<ol>";
+          } else {
+            formattedContent += `<ol start="${orderedListCounter}">`;
+          }
           inList = true;
           listType = "ol";
         }
-        formattedContent += `<li>${escapeHtml(orderedMatch[1])}</li>`;
+        formattedContent += `<li value="${itemNumber}">${escapeHtml(itemText)}</li>`;
+        orderedListCounter = itemNumber + 1;
       } else {
-        if (inList) {
-          formattedContent += listType === "ol" ? "</ol>" : "</ul>";
-          inList = false;
-          listType = null;
-        }
         if (trimmedLine === "") {
-          formattedContent += "<br>";
+          const nextListType = getNextListType(i);
+          if (inList && nextListType === listType) {
+            formattedContent += '<li style="list-style: none; height: 0.5em;"></li>';
+          } else {
+            if (inList) {
+              formattedContent += listType === "ol" ? "</ol>" : "</ul>";
+              inList = false;
+              listType = null;
+            }
+            formattedContent += "<br>";
+          }
         } else {
+          if (inList) {
+            formattedContent += listType === "ol" ? "</ol>" : "</ul>";
+            inList = false;
+            listType = null;
+          }
           formattedContent += escapeHtml(line) + "\n";
         }
       }
@@ -127,7 +157,11 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
   }
   scrollToBottom() {
     requestAnimationFrame(() => {
-      this.messagesEndRef?.scrollIntoView({ behavior: "smooth" });
+      if (this.lastUserMessageRef) {
+        this.lastUserMessageRef.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        this.messagesEndRef?.scrollIntoView({ behavior: "smooth" });
+      }
     });
   }
   handleInput(e) {
@@ -289,12 +323,17 @@ Please check your API endpoint configuration.`
       <!-- Messages Area -->
       <div class="messages-area" style="--user-message-bg: ${this.userMessageBg}; --bot-message-bg: ${this.botMessageBg}; --primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover}; ${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}');` : ""}">
         <div class="messages-container">
-          ${repeat(this.messages, (msg) => msg.id, (msg) => html`
-            <div class=${classMap({
-      message: true,
-      user: msg.role === "user",
-      assistant: msg.role === "assistant"
-    })}>
+          ${repeat(this.messages, (msg) => msg.id, (msg) => {
+      const isLastUserMessage = msg.role === "user" && this.messages.filter((m) => m.role === "user").pop()?.id === msg.id;
+      return html`
+            <div
+              class=${classMap({
+        message: true,
+        user: msg.role === "user",
+        assistant: msg.role === "assistant"
+      })}
+              ${isLastUserMessage ? (el) => this.lastUserMessageRef = el : ""}
+            >
               <div class="avatar">
                 ${msg.role === "user" ? "U" : this.botAvatarUrl ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />` : "AI"}
               </div>
@@ -327,7 +366,8 @@ Please check your API endpoint configuration.`
                 ` : ""}
               </div>
             </div>
-          `)}
+          `;
+    })}
 
           ${this.isLoading ? html`
             <div class="loading">
@@ -953,11 +993,13 @@ AIChat.styles = css`
       margin: 0.5rem 0;
       padding-left: 1.5rem;
       white-space: normal;
+      list-style-position: outside;
     }
 
     .message-text li {
       margin: 0.25rem 0;
       white-space: normal;
+      display: list-item;
     }
 
     .message-text ul {
@@ -965,6 +1007,12 @@ AIChat.styles = css`
     }
 
     .message-text ol {
+      list-style-type: decimal;
+      counter-reset: list-counter;
+    }
+
+    .message-text ol li {
+      display: list-item;
       list-style-type: decimal;
     }
 

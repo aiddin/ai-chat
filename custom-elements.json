@@ -740,6 +740,14 @@
               "privacy": "private"
             },
             {
+              "kind": "field",
+              "name": "lastUserMessageRef",
+              "type": {
+                "text": "HTMLDivElement | undefined"
+              },
+              "privacy": "private"
+            },
+            {
               "kind": "method",
               "name": "toggleWidget",
               "privacy": "private"
