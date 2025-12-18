@@ -3,8 +3,8 @@ import * as lit from 'lit';
 import { LitElement, PropertyValues } from 'lit';
 
 interface FAQ {
-    "no.": string;
-    question: string;
+    No: string;
+    Question: string;
 }
 interface Message {
     id: string;
@@ -70,6 +70,7 @@ declare class AIChat extends LitElement {
     botMessageBg: string;
     welcomeMessage: string;
     welcomeSubtitle: string;
+    initialQuestionsUrl: string;
     private messages;
     private input;
     private isLoading;
@@ -141,6 +142,10 @@ declare class AIChat extends LitElement {
             type: StringConstructor;
             attribute: string;
         };
+        initialQuestionsUrl: {
+            type: StringConstructor;
+            attribute: string;
+        };
     };
     constructor();
     private toggleWidget;
@@ -155,7 +160,7 @@ declare class AIChat extends LitElement {
     private loadMessagesFromStorage;
     private clearMessagesFromStorage;
     private formatMessageContent;
-    connectedCallback(): void;
+    connectedCallback(): Promise<void>;
     updated(changedProperties: PropertyValues): void;
     private scrollToBottom;
     private handleInput;

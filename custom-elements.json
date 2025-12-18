@@ -72,12 +72,12 @@
       "declarations": [
         {
           "kind": "variable",
-          "name": "faqs",
+          "name": "suggestedQuestions",
           "default": "void 0"
         },
         {
           "kind": "variable",
-          "name": "suggestedQuestions",
+          "name": "faqs",
           "default": "void 0"
         }
       ],
@@ -708,6 +708,16 @@
             },
             {
               "kind": "field",
+              "name": "initialQuestionsUrl",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "attribute": "initial-questions-url"
+            },
+            {
+              "kind": "field",
               "name": "messages",
               "type": {
                 "text": "Message[]"
@@ -1050,6 +1060,14 @@
               },
               "default": "''",
               "fieldName": "welcomeSubtitle"
+            },
+            {
+              "name": "initial-questions-url",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "fieldName": "initialQuestionsUrl"
             }
           ],
           "superclass": {

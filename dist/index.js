@@ -16,7 +16,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-var VERSION = "0.2.9";
+var VERSION = "0.2.10";
 exports.AIChat = class AIChat extends lit.LitElement {
   constructor() {
     super();
@@ -37,6 +37,7 @@ exports.AIChat = class AIChat extends lit.LitElement {
     this.botMessageBg = "#F5F5F5";
     this.welcomeMessage = "How can I help you today?";
     this.welcomeSubtitle = "";
+    this.initialQuestionsUrl = "";
     this.messages = [];
     this.input = "";
     this.isLoading = false;
@@ -80,29 +81,38 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
   saveMessagesToStorage() {
     try {
       const storageKey = this.getStorageKey();
-      localStorage.setItem(storageKey, JSON.stringify(this.messages));
+      sessionStorage.setItem(storageKey, JSON.stringify(this.messages));
+      sessionStorage.setItem("ai-chat-last-session-id", this.sessionId);
     } catch (error) {
-      console.warn("Failed to save messages to localStorage:", error);
+      console.warn("Failed to save messages to sessionStorage:", error);
     }
   }
   loadMessagesFromStorage() {
     try {
+      const lastSessionId = sessionStorage.getItem("ai-chat-last-session-id");
+      if (lastSessionId && lastSessionId !== this.sessionId) {
+        console.log(`\u{1F504} Session changed from "${lastSessionId}" to "${this.sessionId}", clearing old messages`);
+        const oldStorageKey = `ai-chat-messages-${lastSessionId}`;
+        sessionStorage.removeItem(oldStorageKey);
+        sessionStorage.setItem("ai-chat-last-session-id", this.sessionId);
+        return null;
+      }
       const storageKey = this.getStorageKey();
-      const saved = localStorage.getItem(storageKey);
+      const saved = sessionStorage.getItem(storageKey);
       if (saved) {
         return JSON.parse(saved);
       }
     } catch (error) {
-      console.warn("Failed to load messages from localStorage:", error);
+      console.warn("Failed to load messages from sessionStorage:", error);
     }
     return null;
   }
   clearMessagesFromStorage() {
     try {
       const storageKey = this.getStorageKey();
-      localStorage.removeItem(storageKey);
+      sessionStorage.removeItem(storageKey);
     } catch (error) {
-      console.warn("Failed to clear messages from localStorage:", error);
+      console.warn("Failed to clear messages from sessionStorage:", error);
     }
   }
   formatMessageContent(content) {
@@ -186,22 +196,46 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
     }
     return formattedContent;
   }
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
     const savedMessages = this.loadMessagesFromStorage();
     if (this.initialMessages && this.initialMessages.length > 0) {
       this.messages = [...this.initialMessages];
     } else if (savedMessages && savedMessages.length > 0) {
       this.messages = savedMessages;
-    } else if (this.welcomeMessage) {
-      const welcomeText = this.welcomeSubtitle ? `${this.welcomeMessage}
+    } else {
+      let suggestedQuestions = void 0;
+      if (this.initialQuestionsUrl) {
+        try {
+          const response = await fetch(this.initialQuestionsUrl);
+          if (response.ok) {
+            const data = await response.json();
+            console.log("\u{1F4E5} Fetched initial questions:", data);
+            let questionsArray = data.questions || data.suggested_questions || data;
+            if (Array.isArray(questionsArray) && questionsArray.length > 0) {
+              if (typeof questionsArray[0] === "object" && questionsArray[0].question_text) {
+                suggestedQuestions = questionsArray.map((q) => q.question_text);
+              } else if (typeof questionsArray[0] === "string") {
+                suggestedQuestions = questionsArray;
+              }
+            }
+            console.log("\u2705 Processed suggested questions:", suggestedQuestions);
+          }
+        } catch (error) {
+          console.warn("Failed to fetch initial questions:", error);
+        }
+      }
+      if (this.welcomeMessage) {
+        const welcomeText = this.welcomeSubtitle ? `${this.welcomeMessage}
 
 ${this.welcomeSubtitle}` : this.welcomeMessage;
-      this.messages = [{
-        id: "welcome-" + Date.now(),
-        role: "assistant",
-        content: welcomeText
-      }];
+        this.messages = [{
+          id: "welcome-" + Date.now(),
+          role: "assistant",
+          content: welcomeText,
+          suggestedQuestions
+        }];
+      }
     }
   }
   updated(changedProperties) {
@@ -425,7 +459,7 @@ Please check your API endpoint configuration.`
                     <ul class="faq-list">
                       ${msg.faqs.map((faq) => lit.html`
                         <li class="faq-item-static">
-                          ${faq.question}
+                          ${faq.Question}
                         </li>
                       `)}
                     </ul>
@@ -1298,7 +1332,8 @@ exports.AIChat.properties = {
   userMessageBg: { type: String, attribute: "user-message-bg" },
   botMessageBg: { type: String, attribute: "bot-message-bg" },
   welcomeMessage: { type: String, attribute: "welcome-message" },
-  welcomeSubtitle: { type: String, attribute: "welcome-subtitle" }
+  welcomeSubtitle: { type: String, attribute: "welcome-subtitle" },
+  initialQuestionsUrl: { type: String, attribute: "initial-questions-url" }
 };
 __decorateClass([
   decorators_js.state()

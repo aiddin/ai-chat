@@ -7,8 +7,8 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 const VERSION = '0.2.10';
 
 export interface FAQ {
-  "no.": string;
-  question: string;
+  No: string;
+  Question: string;
 }
 
 export interface Message {
@@ -823,6 +823,7 @@ export class AIChat extends LitElement {
   declare botMessageBg: string;
   declare welcomeMessage: string;
   declare welcomeSubtitle: string;
+  declare initialQuestionsUrl: string;
 
   @state()
   private declare messages: Message[];
@@ -855,6 +856,7 @@ export class AIChat extends LitElement {
     botMessageBg: { type: String, attribute: 'bot-message-bg' },
     welcomeMessage: { type: String, attribute: 'welcome-message' },
     welcomeSubtitle: { type: String, attribute: 'welcome-subtitle' },
+    initialQuestionsUrl: { type: String, attribute: 'initial-questions-url' },
   };
 
   constructor() {
@@ -876,6 +878,7 @@ export class AIChat extends LitElement {
     this.botMessageBg = '#F5F5F5';
     this.welcomeMessage = 'How can I help you today?';
     this.welcomeSubtitle = '';
+    this.initialQuestionsUrl = '';
     this.messages = [];
     this.input = '';
     this.isLoading = false;
@@ -933,21 +936,35 @@ export class AIChat extends LitElement {
   private saveMessagesToStorage(): void {
     try {
       const storageKey = this.getStorageKey();
-      localStorage.setItem(storageKey, JSON.stringify(this.messages));
+      sessionStorage.setItem(storageKey, JSON.stringify(this.messages));
+      // Store the current session ID to track session changes
+      sessionStorage.setItem('ai-chat-last-session-id', this.sessionId);
     } catch (error) {
-      console.warn('Failed to save messages to localStorage:', error);
+      console.warn('Failed to save messages to sessionStorage:', error);
     }
   }
 
   private loadMessagesFromStorage(): Message[] | null {
     try {
+      // Check if session has changed
+      const lastSessionId = sessionStorage.getItem('ai-chat-last-session-id');
+
+      if (lastSessionId && lastSessionId !== this.sessionId) {
+        // Session has changed, clear the old session's messages
+        console.log(`🔄 Session changed from "${lastSessionId}" to "${this.sessionId}", clearing old messages`);
+        const oldStorageKey = `ai-chat-messages-${lastSessionId}`;
+        sessionStorage.removeItem(oldStorageKey);
+        sessionStorage.setItem('ai-chat-last-session-id', this.sessionId);
+        return null; // Don't load any messages for new session
+      }
+
       const storageKey = this.getStorageKey();
-      const saved = localStorage.getItem(storageKey);
+      const saved = sessionStorage.getItem(storageKey);
       if (saved) {
         return JSON.parse(saved) as Message[];
       }
     } catch (error) {
-      console.warn('Failed to load messages from localStorage:', error);
+      console.warn('Failed to load messages from sessionStorage:', error);
     }
     return null;
   }
@@ -955,9 +972,9 @@ export class AIChat extends LitElement {
   private clearMessagesFromStorage(): void {
     try {
       const storageKey = this.getStorageKey();
-      localStorage.removeItem(storageKey);
+      sessionStorage.removeItem(storageKey);
     } catch (error) {
-      console.warn('Failed to clear messages from localStorage:', error);
+      console.warn('Failed to clear messages from sessionStorage:', error);
     }
   }
 
@@ -1070,28 +1087,60 @@ export class AIChat extends LitElement {
     return formattedContent;
   }
 
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
 
-    // Try to load messages from localStorage first
+    // Try to load messages from sessionStorage first
     const savedMessages = this.loadMessagesFromStorage();
 
     if (this.initialMessages && this.initialMessages.length > 0) {
       this.messages = [...this.initialMessages];
     } else if (savedMessages && savedMessages.length > 0) {
-      // Restore saved messages from localStorage
+      // Restore saved messages from sessionStorage
       this.messages = savedMessages;
-    } else if (this.welcomeMessage) {
-      // Add welcome message as initial assistant message
-      const welcomeText = this.welcomeSubtitle
-        ? `${this.welcomeMessage}\n\n${this.welcomeSubtitle}`
-        : this.welcomeMessage;
+    } else {
+      // Fetch initial suggested questions if URL is provided
+      let suggestedQuestions: string[] | undefined = undefined;
 
-      this.messages = [{
-        id: 'welcome-' + Date.now(),
-        role: 'assistant',
-        content: welcomeText,
-      }];
+      if (this.initialQuestionsUrl) {
+        try {
+          const response = await fetch(this.initialQuestionsUrl);
+          if (response.ok) {
+            const data = await response.json();
+            console.log('📥 Fetched initial questions:', data);
+
+            // Support various response formats
+            let questionsArray = data.questions || data.suggested_questions || data;
+
+            // If array contains objects with question_text property, extract them
+            if (Array.isArray(questionsArray) && questionsArray.length > 0) {
+              if (typeof questionsArray[0] === 'object' && questionsArray[0].question_text) {
+                suggestedQuestions = questionsArray.map((q: any) => q.question_text);
+              } else if (typeof questionsArray[0] === 'string') {
+                suggestedQuestions = questionsArray;
+              }
+            }
+
+            console.log('✅ Processed suggested questions:', suggestedQuestions);
+          }
+        } catch (error) {
+          console.warn('Failed to fetch initial questions:', error);
+        }
+      }
+
+      if (this.welcomeMessage) {
+        // Add welcome message as initial assistant message
+        const welcomeText = this.welcomeSubtitle
+          ? `${this.welcomeMessage}\n\n${this.welcomeSubtitle}`
+          : this.welcomeMessage;
+
+        this.messages = [{
+          id: 'welcome-' + Date.now(),
+          role: 'assistant',
+          content: welcomeText,
+          suggestedQuestions: suggestedQuestions,
+        }];
+      }
     }
   }
 
@@ -1099,7 +1148,7 @@ export class AIChat extends LitElement {
     super.updated(changedProperties);
     if (changedProperties.has('messages')) {
       this.scrollToBottom();
-      // Save messages to localStorage whenever they change
+      // Save messages to sessionStorage whenever they change
       this.saveMessagesToStorage();
     }
   }
@@ -1375,7 +1424,7 @@ export class AIChat extends LitElement {
                     <ul class="faq-list">
                       ${msg.faqs.map(faq => html`
                         <li class="faq-item-static">
-                          ${faq.question}
+                          ${faq.Question}
                         </li>
                       `)}
                     </ul>

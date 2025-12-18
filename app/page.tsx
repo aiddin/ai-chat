@@ -26,6 +26,7 @@ export default function Home() {
         welcome-subtitle="Sila tanya tentang permohonan atau apa-apa berkaitan MySTI"
         bot-avatar-url="/assets/chat-bot-icon.png"
         widget-icon-url="/assets/chat-bot-icon.png"
+        initial-questions-url="http://192.168.0.136:8080/api/questions/first-launch"
         primary-color="#3681D3"
         primary-color-hover="#3457C7"
         user-message-bg="#D6E4FF"
