@@ -37,6 +37,7 @@ var AIChat = class extends LitElement {
     this.welcomeSubtitle = "";
     this.initialQuestionsUrl = "";
     this.language = "en";
+    this.showRelatedFaqs = true;
     this.messages = [];
     this.input = "";
     this.isLoading = false;
@@ -574,7 +575,7 @@ Please check your API endpoint configuration.`
               </div>
               <div class="message-content">
                 <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
-                ${msg.role === "assistant" && msg.faqs && msg.faqs.length > 0 ? html`
+                ${msg.role === "assistant" && this.showRelatedFaqs && msg.faqs && msg.faqs.length > 0 ? html`
                   <div class="faq-section">
                     <p class="faq-title">Related FAQs:</p>
                     <ul class="faq-list">
@@ -1458,7 +1459,8 @@ AIChat.properties = {
   welcomeMessage: { type: String, attribute: "welcome-message" },
   welcomeSubtitle: { type: String, attribute: "welcome-subtitle" },
   initialQuestionsUrl: { type: String, attribute: "initial-questions-url" },
-  language: { type: String, attribute: "language" }
+  language: { type: String, attribute: "language" },
+  showRelatedFaqs: { type: Boolean, attribute: "show-related-faqs" }
 };
 __decorateClass([
   state()

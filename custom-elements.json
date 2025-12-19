@@ -723,6 +723,16 @@
             },
             {
               "kind": "field",
+              "name": "showRelatedFaqs",
+              "privacy": "public",
+              "type": {
+                "text": "boolean"
+              },
+              "default": "true",
+              "attribute": "show-related-faqs"
+            },
+            {
+              "kind": "field",
               "name": "messages",
               "type": {
                 "text": "Message[]"
@@ -1113,6 +1123,14 @@
               },
               "default": "'en'",
               "fieldName": "language"
+            },
+            {
+              "name": "show-related-faqs",
+              "type": {
+                "text": "boolean"
+              },
+              "default": "true",
+              "fieldName": "showRelatedFaqs"
             }
           ],
           "superclass": {

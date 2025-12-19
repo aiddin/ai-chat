@@ -39,6 +39,7 @@ exports.AIChat = class AIChat extends lit.LitElement {
     this.welcomeSubtitle = "";
     this.initialQuestionsUrl = "";
     this.language = "en";
+    this.showRelatedFaqs = true;
     this.messages = [];
     this.input = "";
     this.isLoading = false;
@@ -576,7 +577,7 @@ Please check your API endpoint configuration.`
               </div>
               <div class="message-content">
                 <div class="message-text">${unsafeHtml_js.unsafeHTML(this.formatMessageContent(msg.content))}</div>
-                ${msg.role === "assistant" && msg.faqs && msg.faqs.length > 0 ? lit.html`
+                ${msg.role === "assistant" && this.showRelatedFaqs && msg.faqs && msg.faqs.length > 0 ? lit.html`
                   <div class="faq-section">
                     <p class="faq-title">Related FAQs:</p>
                     <ul class="faq-list">
@@ -1460,7 +1461,8 @@ exports.AIChat.properties = {
   welcomeMessage: { type: String, attribute: "welcome-message" },
   welcomeSubtitle: { type: String, attribute: "welcome-subtitle" },
   initialQuestionsUrl: { type: String, attribute: "initial-questions-url" },
-  language: { type: String, attribute: "language" }
+  language: { type: String, attribute: "language" },
+  showRelatedFaqs: { type: Boolean, attribute: "show-related-faqs" }
 };
 __decorateClass([
   decorators_js.state()

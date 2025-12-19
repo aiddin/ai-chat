@@ -78,6 +78,7 @@ declare class AIChat extends LitElement {
     welcomeSubtitle: string;
     initialQuestionsUrl: string;
     language: string;
+    showRelatedFaqs: boolean;
     private messages;
     private input;
     private isLoading;
@@ -155,6 +156,10 @@ declare class AIChat extends LitElement {
         };
         language: {
             type: StringConstructor;
+            attribute: string;
+        };
+        showRelatedFaqs: {
+            type: BooleanConstructor;
             attribute: string;
         };
     };
