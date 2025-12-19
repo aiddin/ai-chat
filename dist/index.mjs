@@ -36,6 +36,7 @@ var AIChat = class extends LitElement {
     this.welcomeMessage = "How can I help you today?";
     this.welcomeSubtitle = "";
     this.initialQuestionsUrl = "";
+    this.language = "en";
     this.messages = [];
     this.input = "";
     this.isLoading = false;
@@ -205,16 +206,29 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       let suggestedQuestions = void 0;
       if (this.initialQuestionsUrl) {
         try {
-          const response = await fetch(this.initialQuestionsUrl);
+          let fetchUrl = this.initialQuestionsUrl;
+          if (this.language) {
+            const separator = fetchUrl.includes("?") ? "&" : "?";
+            fetchUrl = `${fetchUrl}${separator}language=${this.language}`;
+          }
+          console.log("\u{1F4E4} Fetching initial questions from:", fetchUrl);
+          const response = await fetch(fetchUrl);
           if (response.ok) {
             const data = await response.json();
             console.log("\u{1F4E5} Fetched initial questions:", data);
             let questionsArray = data.questions || data.suggested_questions || data;
             if (Array.isArray(questionsArray) && questionsArray.length > 0) {
               if (typeof questionsArray[0] === "object" && questionsArray[0].question_text) {
-                suggestedQuestions = questionsArray.map((q) => q.question_text);
+                suggestedQuestions = questionsArray.map((q) => ({
+                  id: q.id,
+                  question_type: q.question_type,
+                  question_text: q.question_text,
+                  category: q.category
+                }));
               } else if (typeof questionsArray[0] === "string") {
-                suggestedQuestions = questionsArray;
+                suggestedQuestions = questionsArray.map((q) => ({
+                  question_text: q
+                }));
               }
             }
             console.log("\u2705 Processed suggested questions:", suggestedQuestions);
@@ -252,14 +266,121 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       }
     }, 100);
   }
+  /**
+   * Normalize suggested questions - converts string arrays to SuggestedQuestion objects
+   */
+  normalizeSuggestedQuestions(questions) {
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return void 0;
+    }
+    if (typeof questions[0] === "object" && questions[0].question_text) {
+      return questions;
+    }
+    if (typeof questions[0] === "string") {
+      return questions.map((q) => ({
+        question_text: q
+      }));
+    }
+    return void 0;
+  }
   handleInput(e) {
     this.input = e.target.value;
   }
-  handleFAQClick(question) {
+  async handleFAQClick(question) {
     if (this.isLoading) return;
-    this.input = question;
-    const submitEvent = new Event("submit", { cancelable: true });
-    this.handleSubmit(submitEvent);
+    if (question.id && question.question_type) {
+      await this.handleSuggestedQuestionClick(question);
+    } else {
+      this.input = question.question_text;
+      const submitEvent = new Event("submit", { cancelable: true });
+      this.handleSubmit(submitEvent);
+    }
+  }
+  async handleSuggestedQuestionClick(question) {
+    if (!question.id || !question.question_type) return;
+    const userMessage = {
+      id: Date.now().toString(),
+      role: "user",
+      content: question.question_text
+    };
+    this.messages = [...this.messages, userMessage];
+    this.isLoading = true;
+    this.dispatchEvent(new CustomEvent("message-sent", {
+      detail: userMessage,
+      bubbles: true,
+      composed: true
+    }));
+    try {
+      let baseUrl = "";
+      if (this.initialQuestionsUrl) {
+        try {
+          const urlObj = new URL(this.initialQuestionsUrl);
+          baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+        } catch {
+          baseUrl = "http://43.217.183.120:8080";
+        }
+      } else {
+        baseUrl = "http://43.217.183.120:8080";
+      }
+      const url = `${baseUrl}/api/questions/${question.id}?question_type=${question.question_type}`;
+      console.log("\u{1F4E4} Calling suggested question API:", url);
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Backend error: ${response.status} ${errorText}`);
+      }
+      const data = await response.json();
+      console.log("\u{1F50D} Suggested question API response:", data);
+      let responseText = "No response from agent";
+      let suggestedQuestions = void 0;
+      if (data && typeof data === "object") {
+        if (data.question && data.question.answer_text) {
+          responseText = data.question.answer_text;
+        }
+        if (data.related_questions && Array.isArray(data.related_questions) && data.related_questions.length > 0) {
+          if (typeof data.related_questions[0] === "object" && data.related_questions[0].question_text) {
+            suggestedQuestions = data.related_questions.map((q) => ({
+              id: q.id,
+              question_type: q.question_type,
+              question_text: q.question_text,
+              category: q.category
+            }));
+          }
+        }
+      }
+      const assistantMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: responseText,
+        suggestedQuestions
+      };
+      this.messages = [...this.messages, assistantMessage];
+      this.dispatchEvent(new CustomEvent("response-received", {
+        detail: assistantMessage,
+        bubbles: true,
+        composed: true
+      }));
+    } catch (err) {
+      console.error("Suggested question API failed:", err);
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `Error: ${err instanceof Error ? err.message : "Unknown error"}
+
+Please check your API endpoint configuration.`
+      };
+      this.messages = [...this.messages, errorMessage];
+      this.dispatchEvent(new CustomEvent("error", {
+        detail: err,
+        bubbles: true,
+        composed: true
+      }));
+    } finally {
+      this.isLoading = false;
+    }
   }
   async handleSubmit(e) {
     e.preventDefault();
@@ -308,14 +429,14 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
             if (innerData && innerData.response && typeof innerData.response === "string") {
               responseText = innerData.response;
               faqs = innerData.faq_used || innerData.faqs_used || void 0;
-              suggestedQuestions = innerData.suggested_follow_ups || innerData.suggested_questions || void 0;
+              suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
               console.log("\u2705 Extracted text length:", responseText.length);
               console.log("\u2705 Extracted FAQs count:", faqs?.length || 0);
               console.log("\u2705 Extracted suggested questions count:", suggestedQuestions?.length || 0);
             } else {
               responseText = data.response;
               faqs = data.faq_used || data.faqs_used || void 0;
-              suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
+              suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
             }
           } catch (parseError) {
             console.warn("\u26A0\uFE0F JSON.parse failed, using regex extraction...", parseError);
@@ -352,7 +473,8 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
             const suggestedMatch = data.response.match(suggestedPattern);
             if (suggestedMatch) {
               try {
-                suggestedQuestions = JSON.parse(suggestedMatch[1]);
+                const parsedQuestions = JSON.parse(suggestedMatch[1]);
+                suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
                 console.log("\u2705 Extracted suggested questions, count:", suggestedQuestions?.length || 0);
               } catch {
                 console.log("\u26A0\uFE0F Could not parse suggested questions, trying multiline...");
@@ -360,7 +482,8 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
                 const suggestedMultiMatch = data.response.match(suggestedMultiPattern);
                 if (suggestedMultiMatch) {
                   try {
-                    suggestedQuestions = JSON.parse(suggestedMultiMatch[1]);
+                    const parsedQuestions = JSON.parse(suggestedMultiMatch[1]);
+                    suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
                     console.log("\u2705 Extracted multi-line suggested questions, count:", suggestedQuestions?.length || 0);
                   } catch {
                     suggestedQuestions = void 0;
@@ -373,7 +496,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
           console.log("\u{1F4C4} Direct text response (not JSON)");
           responseText = data.response;
           faqs = data.faq_used || data.faqs_used || void 0;
-          suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
+          suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
         }
       } else if (typeof data === "string") {
         console.log("\u{1F4C4} Response is a plain string");
@@ -382,7 +505,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
         console.warn("\u26A0\uFE0F Unexpected format, using fallback");
         responseText = data.message || data.answer || "Error: Unexpected response format";
         faqs = data.faq_used || data.faqs_used || void 0;
-        suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || void 0;
+        suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
       }
       console.log("\u{1F3AF} Final responseText length:", responseText.length);
       console.log("\u{1F3AF} Final responseText preview:", responseText.substring(0, 100));
@@ -469,7 +592,7 @@ Please check your API endpoint configuration.`
                     <ul class="faq-list">
                       ${msg.suggestedQuestions.map((question) => html`
                         <li class="faq-item" @click=${() => this.handleFAQClick(question)}>
-                          ${question}
+                          ${question.question_text}
                         </li>
                       `)}
                     </ul>
@@ -635,9 +758,12 @@ AIChat.styles = css`
     }
 
     .widget-button-icon {
-      width: auto;
-      height: auto;
-      object-fit: cover;
+      width: 100%;
+      height: 100%;
+      max-width: 60px;
+      max-height: 60px;
+      object-fit: contain;
+      border-radius: 50%;
     }
 
     .widget-window {
@@ -1331,7 +1457,8 @@ AIChat.properties = {
   botMessageBg: { type: String, attribute: "bot-message-bg" },
   welcomeMessage: { type: String, attribute: "welcome-message" },
   welcomeSubtitle: { type: String, attribute: "welcome-subtitle" },
-  initialQuestionsUrl: { type: String, attribute: "initial-questions-url" }
+  initialQuestionsUrl: { type: String, attribute: "initial-questions-url" },
+  language: { type: String, attribute: "language" }
 };
 __decorateClass([
   state()

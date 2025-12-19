@@ -74,11 +74,6 @@
           "kind": "variable",
           "name": "suggestedQuestions",
           "default": "void 0"
-        },
-        {
-          "kind": "variable",
-          "name": "faqs",
-          "default": "void 0"
         }
       ],
       "exports": []
@@ -718,6 +713,16 @@
             },
             {
               "kind": "field",
+              "name": "language",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'en'",
+              "attribute": "language"
+            },
+            {
+              "kind": "field",
               "name": "messages",
               "type": {
                 "text": "Message[]"
@@ -858,6 +863,25 @@
             },
             {
               "kind": "method",
+              "name": "normalizeSuggestedQuestions",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "SuggestedQuestion[] | undefined"
+                }
+              },
+              "parameters": [
+                {
+                  "name": "questions",
+                  "type": {
+                    "text": "any"
+                  }
+                }
+              ],
+              "description": "Normalize suggested questions - converts string arrays to SuggestedQuestion objects"
+            },
+            {
+              "kind": "method",
               "name": "handleInput",
               "privacy": "private",
               "parameters": [
@@ -877,7 +901,20 @@
                 {
                   "name": "question",
                   "type": {
-                    "text": "string"
+                    "text": "SuggestedQuestion"
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "handleSuggestedQuestionClick",
+              "privacy": "private",
+              "parameters": [
+                {
+                  "name": "question",
+                  "type": {
+                    "text": "SuggestedQuestion"
                   }
                 }
               ]
@@ -1068,6 +1105,14 @@
               },
               "default": "''",
               "fieldName": "initialQuestionsUrl"
+            },
+            {
+              "name": "language",
+              "type": {
+                "text": "string"
+              },
+              "default": "'en'",
+              "fieldName": "language"
             }
           ],
           "superclass": {

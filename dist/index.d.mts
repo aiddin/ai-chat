@@ -6,12 +6,18 @@ interface FAQ {
     No: string;
     Question: string;
 }
+interface SuggestedQuestion {
+    id?: number;
+    question_type?: string;
+    question_text: string;
+    category?: string;
+}
 interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
     faqs?: FAQ[];
-    suggestedQuestions?: string[];
+    suggestedQuestions?: SuggestedQuestion[];
 }
 /**
  * AI Chat Web Component
@@ -71,6 +77,7 @@ declare class AIChat extends LitElement {
     welcomeMessage: string;
     welcomeSubtitle: string;
     initialQuestionsUrl: string;
+    language: string;
     private messages;
     private input;
     private isLoading;
@@ -146,6 +153,10 @@ declare class AIChat extends LitElement {
             type: StringConstructor;
             attribute: string;
         };
+        language: {
+            type: StringConstructor;
+            attribute: string;
+        };
     };
     constructor();
     private toggleWidget;
@@ -163,8 +174,13 @@ declare class AIChat extends LitElement {
     connectedCallback(): Promise<void>;
     updated(changedProperties: PropertyValues): void;
     private scrollToBottom;
+    /**
+     * Normalize suggested questions - converts string arrays to SuggestedQuestion objects
+     */
+    private normalizeSuggestedQuestions;
     private handleInput;
     private handleFAQClick;
+    private handleSuggestedQuestionClick;
     private handleSubmit;
     private renderChatUI;
     render(): lit_html.TemplateResult<1>;

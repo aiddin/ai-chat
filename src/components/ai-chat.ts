@@ -11,12 +11,19 @@ export interface FAQ {
   Question: string;
 }
 
+export interface SuggestedQuestion {
+  id?: number;
+  question_type?: string;
+  question_text: string;
+  category?: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   faqs?: FAQ[];
-  suggestedQuestions?: string[];
+  suggestedQuestions?: SuggestedQuestion[];
 }
 
 /**
@@ -127,9 +134,12 @@ export class AIChat extends LitElement {
     }
 
     .widget-button-icon {
-      width: auto;
-      height: auto;
-      object-fit: cover;
+      width: 100%;
+      height: 100%;
+      max-width: 60px;
+      max-height: 60px;
+      object-fit: contain;
+      border-radius: 50%;
     }
 
     .widget-window {
@@ -824,6 +834,7 @@ export class AIChat extends LitElement {
   declare welcomeMessage: string;
   declare welcomeSubtitle: string;
   declare initialQuestionsUrl: string;
+  declare language: string;
 
   @state()
   private declare messages: Message[];
@@ -857,6 +868,7 @@ export class AIChat extends LitElement {
     welcomeMessage: { type: String, attribute: 'welcome-message' },
     welcomeSubtitle: { type: String, attribute: 'welcome-subtitle' },
     initialQuestionsUrl: { type: String, attribute: 'initial-questions-url' },
+    language: { type: String, attribute: 'language' },
   };
 
   constructor() {
@@ -879,6 +891,7 @@ export class AIChat extends LitElement {
     this.welcomeMessage = 'How can I help you today?';
     this.welcomeSubtitle = '';
     this.initialQuestionsUrl = '';
+    this.language = 'en';
     this.messages = [];
     this.input = '';
     this.isLoading = false;
@@ -1100,11 +1113,19 @@ export class AIChat extends LitElement {
       this.messages = savedMessages;
     } else {
       // Fetch initial suggested questions if URL is provided
-      let suggestedQuestions: string[] | undefined = undefined;
+      let suggestedQuestions: SuggestedQuestion[] | undefined = undefined;
 
       if (this.initialQuestionsUrl) {
         try {
-          const response = await fetch(this.initialQuestionsUrl);
+          // Append language parameter to the URL
+          let fetchUrl = this.initialQuestionsUrl;
+          if (this.language) {
+            const separator = fetchUrl.includes('?') ? '&' : '?';
+            fetchUrl = `${fetchUrl}${separator}language=${this.language}`;
+          }
+
+          console.log('📤 Fetching initial questions from:', fetchUrl);
+          const response = await fetch(fetchUrl);
           if (response.ok) {
             const data = await response.json();
             console.log('📥 Fetched initial questions:', data);
@@ -1112,12 +1133,21 @@ export class AIChat extends LitElement {
             // Support various response formats
             let questionsArray = data.questions || data.suggested_questions || data;
 
-            // If array contains objects with question_text property, extract them
+            // If array contains objects with question_text property, store full objects
             if (Array.isArray(questionsArray) && questionsArray.length > 0) {
               if (typeof questionsArray[0] === 'object' && questionsArray[0].question_text) {
-                suggestedQuestions = questionsArray.map((q: any) => q.question_text);
+                // Store full question objects with id and question_type
+                suggestedQuestions = questionsArray.map((q: any) => ({
+                  id: q.id,
+                  question_type: q.question_type,
+                  question_text: q.question_text,
+                  category: q.category
+                }));
               } else if (typeof questionsArray[0] === 'string') {
-                suggestedQuestions = questionsArray;
+                // Legacy format: convert strings to objects
+                suggestedQuestions = questionsArray.map((q: string) => ({
+                  question_text: q
+                }));
               }
             }
 
@@ -1165,19 +1195,160 @@ export class AIChat extends LitElement {
     }, 100);
   }
 
+  /**
+   * Normalize suggested questions - converts string arrays to SuggestedQuestion objects
+   */
+  private normalizeSuggestedQuestions(questions: any): SuggestedQuestion[] | undefined {
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return undefined;
+    }
+
+    // If already objects with question_text, return as-is
+    if (typeof questions[0] === 'object' && questions[0].question_text) {
+      return questions as SuggestedQuestion[];
+    }
+
+    // If strings, convert to SuggestedQuestion objects
+    if (typeof questions[0] === 'string') {
+      return questions.map((q: string) => ({
+        question_text: q
+      }));
+    }
+
+    return undefined;
+  }
+
   private handleInput(e: Event) {
     this.input = (e.target as HTMLInputElement).value;
   }
 
-  private handleFAQClick(question: string) {
+  private async handleFAQClick(question: SuggestedQuestion) {
     if (this.isLoading) return;
 
-    // Set the input and trigger submit
-    this.input = question;
+    // Check if this is a suggested question with id and question_type
+    if (question.id && question.question_type) {
+      // Call the new API endpoint for suggested questions
+      await this.handleSuggestedQuestionClick(question);
+    } else {
+      // Legacy behavior: Set the input and trigger submit
+      this.input = question.question_text;
 
-    // Create a synthetic submit event
-    const submitEvent = new Event('submit', { cancelable: true });
-    this.handleSubmit(submitEvent);
+      // Create a synthetic submit event
+      const submitEvent = new Event('submit', { cancelable: true });
+      this.handleSubmit(submitEvent);
+    }
+  }
+
+  private async handleSuggestedQuestionClick(question: SuggestedQuestion) {
+    if (!question.id || !question.question_type) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: question.question_text,
+    };
+
+    this.messages = [...this.messages, userMessage];
+    this.isLoading = true;
+
+    // Dispatch message-sent event
+    this.dispatchEvent(new CustomEvent('message-sent', {
+      detail: userMessage,
+      bubbles: true,
+      composed: true,
+    }));
+
+    try {
+      // Call the new endpoint: /api/questions/{id}?question_type={question_type}
+      // Extract base URL from initialQuestionsUrl (e.g., "http://example.com:8080/api/questions/first-launch" -> "http://example.com:8080")
+      let baseUrl = '';
+      if (this.initialQuestionsUrl) {
+        try {
+          const urlObj = new URL(this.initialQuestionsUrl);
+          baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+        } catch {
+          // Fallback if URL parsing fails
+          baseUrl = 'http://43.217.183.120:8080';
+        }
+      } else {
+        baseUrl = 'http://43.217.183.120:8080';
+      }
+
+      const url = `${baseUrl}/api/questions/${question.id}?question_type=${question.question_type}`;
+
+      console.log('📤 Calling suggested question API:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Backend error: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('🔍 Suggested question API response:', data);
+
+      // Extract response text from the API response
+      let responseText = 'No response from agent';
+      let suggestedQuestions: SuggestedQuestion[] | undefined = undefined;
+
+      if (data && typeof data === 'object') {
+        // The API returns { question: { answer_text: "...", ... }, related_questions: [...] }
+        if (data.question && data.question.answer_text) {
+          responseText = data.question.answer_text;
+        }
+
+        // Convert related_questions to SuggestedQuestion format
+        if (data.related_questions && Array.isArray(data.related_questions) && data.related_questions.length > 0) {
+          if (typeof data.related_questions[0] === 'object' && data.related_questions[0].question_text) {
+            suggestedQuestions = data.related_questions.map((q: any) => ({
+              id: q.id,
+              question_type: q.question_type,
+              question_text: q.question_text,
+              category: q.category
+            }));
+          }
+        }
+      }
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: responseText,
+        suggestedQuestions: suggestedQuestions,
+      };
+
+      this.messages = [...this.messages, assistantMessage];
+
+      // Dispatch response-received event
+      this.dispatchEvent(new CustomEvent('response-received', {
+        detail: assistantMessage,
+        bubbles: true,
+        composed: true,
+      }));
+    } catch (err) {
+      console.error('Suggested question API failed:', err);
+
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}\n\nPlease check your API endpoint configuration.`,
+      };
+
+      this.messages = [...this.messages, errorMessage];
+
+      // Dispatch error event
+      this.dispatchEvent(new CustomEvent('error', {
+        detail: err,
+        bubbles: true,
+        composed: true,
+      }));
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   private async handleSubmit(e: Event) {
@@ -1224,7 +1395,7 @@ export class AIChat extends LitElement {
       // Extract the response text and suggested questions
       let responseText = 'No response from agent';
       let faqs: FAQ[] | undefined = undefined;
-      let suggestedQuestions: string[] | undefined = undefined;
+      let suggestedQuestions: SuggestedQuestion[] | undefined = undefined;
 
       if (data && typeof data === 'object' && data.response && typeof data.response === 'string') {
         console.log('📝 data.response type:', typeof data.response);
@@ -1243,14 +1414,14 @@ export class AIChat extends LitElement {
             if (innerData && innerData.response && typeof innerData.response === 'string') {
               responseText = innerData.response;
               faqs = innerData.faq_used || innerData.faqs_used || undefined;
-              suggestedQuestions = innerData.suggested_follow_ups || innerData.suggested_questions || undefined;
+              suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
               console.log('✅ Extracted text length:', responseText.length);
               console.log('✅ Extracted FAQs count:', faqs?.length || 0);
               console.log('✅ Extracted suggested questions count:', suggestedQuestions?.length || 0);
             } else {
               responseText = data.response;
               faqs = data.faq_used || data.faqs_used || undefined;
-              suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || undefined;
+              suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
             }
           } catch (parseError) {
             console.warn('⚠️ JSON.parse failed, using regex extraction...', parseError);
@@ -1302,7 +1473,8 @@ export class AIChat extends LitElement {
 
             if (suggestedMatch) {
               try {
-                suggestedQuestions = JSON.parse(suggestedMatch[1]);
+                const parsedQuestions = JSON.parse(suggestedMatch[1]);
+                suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
                 console.log('✅ Extracted suggested questions, count:', suggestedQuestions?.length || 0);
               } catch {
                 console.log('⚠️ Could not parse suggested questions, trying multiline...');
@@ -1310,7 +1482,8 @@ export class AIChat extends LitElement {
                 const suggestedMultiMatch = data.response.match(suggestedMultiPattern);
                 if (suggestedMultiMatch) {
                   try {
-                    suggestedQuestions = JSON.parse(suggestedMultiMatch[1]);
+                    const parsedQuestions = JSON.parse(suggestedMultiMatch[1]);
+                    suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
                     console.log('✅ Extracted multi-line suggested questions, count:', suggestedQuestions?.length || 0);
                   } catch {
                     suggestedQuestions = undefined;
@@ -1324,7 +1497,7 @@ export class AIChat extends LitElement {
           console.log('📄 Direct text response (not JSON)');
           responseText = data.response;
           faqs = data.faq_used || data.faqs_used || undefined;
-          suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || undefined;
+          suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
         }
       } else if (typeof data === 'string') {
         console.log('📄 Response is a plain string');
@@ -1334,7 +1507,7 @@ export class AIChat extends LitElement {
         console.warn('⚠️ Unexpected format, using fallback');
         responseText = data.message || data.answer || 'Error: Unexpected response format';
         faqs = data.faq_used || data.faqs_used || undefined;
-        suggestedQuestions = data.suggested_follow_ups || data.suggested_questions || undefined;
+        suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
       }
 
       console.log('🎯 Final responseText length:', responseText.length);
@@ -1436,7 +1609,7 @@ export class AIChat extends LitElement {
                     <ul class="faq-list">
                       ${msg.suggestedQuestions.map(question => html`
                         <li class="faq-item" @click=${() => this.handleFAQClick(question)}>
-                          ${question}
+                          ${question.question_text}
                         </li>
                       `)}
                     </ul>
