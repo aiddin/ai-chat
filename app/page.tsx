@@ -32,7 +32,6 @@ export default function Home() {
         primary-color-hover="#3457C7"
         user-message-bg="#D6E4FF"
         bot-message-bg="#F5F5F5"
-        show-related-faqs
       />
     </div>
   );

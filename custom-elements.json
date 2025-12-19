@@ -728,7 +728,7 @@
               "type": {
                 "text": "boolean"
               },
-              "default": "true",
+              "default": "false",
               "attribute": "show-related-faqs"
             },
             {
@@ -1129,7 +1129,7 @@
               "type": {
                 "text": "boolean"
               },
-              "default": "true",
+              "default": "false",
               "fieldName": "showRelatedFaqs"
             }
           ],

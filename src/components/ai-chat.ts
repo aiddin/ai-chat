@@ -894,7 +894,7 @@ export class AIChat extends LitElement {
     this.welcomeSubtitle = '';
     this.initialQuestionsUrl = '';
     this.language = 'en';
-    this.showRelatedFaqs = true;
+    this.showRelatedFaqs = false;
     this.messages = [];
     this.input = '';
     this.isLoading = false;
