@@ -14,7 +14,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-var VERSION = "0.2.13";
+var VERSION = "0.2.17";
 var AIChat = class extends LitElement {
   constructor() {
     super();
@@ -38,6 +38,7 @@ var AIChat = class extends LitElement {
     this.initialQuestionsUrl = "";
     this.language = "en";
     this.showRelatedFaqs = false;
+    this.errorMessage = "Maaf, terdapat masalah semasa menghubungi pelayan. Sila cuba lagi.";
     this.messages = [];
     this.input = "";
     this.isLoading = false;
@@ -91,7 +92,6 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
     try {
       const lastSessionId = sessionStorage.getItem("ai-chat-last-session-id");
       if (lastSessionId && lastSessionId !== this.sessionId) {
-        console.log(`\u{1F504} Session changed from "${lastSessionId}" to "${this.sessionId}", clearing old messages`);
         const oldStorageKey = `ai-chat-messages-${lastSessionId}`;
         sessionStorage.removeItem(oldStorageKey);
         sessionStorage.setItem("ai-chat-last-session-id", this.sessionId);
@@ -205,6 +205,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       this.messages = savedMessages;
     } else {
       let suggestedQuestions = void 0;
+      let fetchFailed = false;
       if (this.initialQuestionsUrl) {
         try {
           let fetchUrl = this.initialQuestionsUrl;
@@ -212,11 +213,9 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
             const separator = fetchUrl.includes("?") ? "&" : "?";
             fetchUrl = `${fetchUrl}${separator}language=${this.language}`;
           }
-          console.log("\u{1F4E4} Fetching initial questions from:", fetchUrl);
           const response = await fetch(fetchUrl);
           if (response.ok) {
             const data = await response.json();
-            console.log("\u{1F4E5} Fetched initial questions:", data);
             let questionsArray = data.questions || data.suggested_questions || data;
             if (Array.isArray(questionsArray) && questionsArray.length > 0) {
               if (typeof questionsArray[0] === "object" && questionsArray[0].question_text) {
@@ -232,11 +231,16 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
                 }));
               }
             }
-            console.log("\u2705 Processed suggested questions:", suggestedQuestions);
+          } else {
+            fetchFailed = true;
           }
         } catch (error) {
           console.warn("Failed to fetch initial questions:", error);
+          fetchFailed = true;
         }
+      }
+      if (fetchFailed) {
+        this.clearMessagesFromStorage();
       }
       if (this.welcomeMessage) {
         const welcomeText = this.welcomeSubtitle ? `${this.welcomeMessage}
@@ -324,7 +328,6 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
         baseUrl = "http://43.217.183.120:8080";
       }
       const url = `${baseUrl}/api/questions/${question.id}?question_type=${question.question_type}`;
-      console.log("\u{1F4E4} Calling suggested question API:", url);
       const response = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" }
@@ -334,7 +337,6 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
         throw new Error(`Backend error: ${response.status} ${errorText}`);
       }
       const data = await response.json();
-      console.log("\u{1F50D} Suggested question API response:", data);
       let responseText = "No response from agent";
       let suggestedQuestions = void 0;
       if (data && typeof data === "object") {
@@ -369,9 +371,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       const errorMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Error: ${err instanceof Error ? err.message : "Unknown error"}
-
-Please check your API endpoint configuration.`
+        content: this.errorMessage
       };
       this.messages = [...this.messages, errorMessage];
       this.dispatchEvent(new CustomEvent("error", {
@@ -414,40 +414,29 @@ Please check your API endpoint configuration.`
         throw new Error(`Backend error: ${response.status} ${errorText}`);
       }
       const data = await response.json();
-      console.log("\u{1F50D} Raw API response:", data);
       let responseText = "No response from agent";
       let faqs = void 0;
       let suggestedQuestions = void 0;
       if (data && typeof data === "object" && data.response && typeof data.response === "string") {
-        console.log("\u{1F4DD} data.response type:", typeof data.response);
-        console.log("\u{1F4DD} data.response preview:", data.response.substring(0, 100));
         const trimmedResponse = data.response.trim();
         if (trimmedResponse.startsWith("{") || trimmedResponse.startsWith("[")) {
-          console.log("\u{1F504} Detected stringified JSON, parsing...");
           try {
             const innerData = JSON.parse(data.response);
-            console.log("\u2705 Parsed inner data with JSON.parse");
             if (innerData && innerData.response && typeof innerData.response === "string") {
               responseText = innerData.response;
               faqs = innerData.faq_used || innerData.faqs_used || void 0;
               suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
-              console.log("\u2705 Extracted text length:", responseText.length);
-              console.log("\u2705 Extracted FAQs count:", faqs?.length || 0);
-              console.log("\u2705 Extracted suggested questions count:", suggestedQuestions?.length || 0);
             } else {
               responseText = data.response;
               faqs = data.faq_used || data.faqs_used || void 0;
               suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
             }
           } catch (parseError) {
-            console.warn("\u26A0\uFE0F JSON.parse failed, using regex extraction...", parseError);
             const responsePattern = /"response"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/s;
             const responseMatch = data.response.match(responsePattern);
             if (responseMatch) {
               responseText = responseMatch[1].replace(/\\n/g, "\n").replace(/\\t/g, "	").replace(/\\r/g, "\r").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
-              console.log("\u2705 Extracted response text, length:", responseText.length);
             } else {
-              console.error("\u274C Could not extract response");
               responseText = "Error: Could not parse response";
             }
             const faqsPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[^\]]*\])/s;
@@ -455,15 +444,12 @@ Please check your API endpoint configuration.`
             if (faqsMatch) {
               try {
                 faqs = JSON.parse(faqsMatch[1]);
-                console.log("\u2705 Extracted FAQs, count:", faqs?.length || 0);
               } catch {
-                console.log("\u26A0\uFE0F Could not parse FAQs, trying multiline...");
                 const faqsMultiPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
                 const faqsMultiMatch = data.response.match(faqsMultiPattern);
                 if (faqsMultiMatch) {
                   try {
                     faqs = JSON.parse(faqsMultiMatch[1]);
-                    console.log("\u2705 Extracted multi-line FAQs, count:", faqs?.length || 0);
                   } catch {
                     faqs = void 0;
                   }
@@ -476,16 +462,13 @@ Please check your API endpoint configuration.`
               try {
                 const parsedQuestions = JSON.parse(suggestedMatch[1]);
                 suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
-                console.log("\u2705 Extracted suggested questions, count:", suggestedQuestions?.length || 0);
               } catch {
-                console.log("\u26A0\uFE0F Could not parse suggested questions, trying multiline...");
                 const suggestedMultiPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
                 const suggestedMultiMatch = data.response.match(suggestedMultiPattern);
                 if (suggestedMultiMatch) {
                   try {
                     const parsedQuestions = JSON.parse(suggestedMultiMatch[1]);
                     suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
-                    console.log("\u2705 Extracted multi-line suggested questions, count:", suggestedQuestions?.length || 0);
                   } catch {
                     suggestedQuestions = void 0;
                   }
@@ -494,24 +477,17 @@ Please check your API endpoint configuration.`
             }
           }
         } else {
-          console.log("\u{1F4C4} Direct text response (not JSON)");
           responseText = data.response;
           faqs = data.faq_used || data.faqs_used || void 0;
           suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
         }
       } else if (typeof data === "string") {
-        console.log("\u{1F4C4} Response is a plain string");
         responseText = data;
       } else if (data && typeof data === "object") {
-        console.warn("\u26A0\uFE0F Unexpected format, using fallback");
         responseText = data.message || data.answer || "Error: Unexpected response format";
         faqs = data.faq_used || data.faqs_used || void 0;
         suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
       }
-      console.log("\u{1F3AF} Final responseText length:", responseText.length);
-      console.log("\u{1F3AF} Final responseText preview:", responseText.substring(0, 100));
-      console.log("\u{1F3AF} Final FAQs:", faqs);
-      console.log("\u{1F3AF} Final suggested questions:", suggestedQuestions);
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -530,9 +506,7 @@ Please check your API endpoint configuration.`
       const errorMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Error: ${err instanceof Error ? err.message : "Unknown error"}
-
-Please check your API endpoint configuration.`
+        content: this.errorMessage
       };
       this.messages = [...this.messages, errorMessage];
       this.dispatchEvent(new CustomEvent("error", {
@@ -1193,6 +1167,9 @@ AIChat.styles = css`
       padding: 0.875rem 1.125rem;
       border-radius: 1.25rem;
       line-height: 1.6;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      min-width: 0;
     }
 
     .message.user .message-content {
@@ -1221,6 +1198,8 @@ AIChat.styles = css`
       white-space: pre-wrap;
       margin: 0;
       word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
 
     .message-text ul,
@@ -1460,7 +1439,8 @@ AIChat.properties = {
   welcomeSubtitle: { type: String, attribute: "welcome-subtitle" },
   initialQuestionsUrl: { type: String, attribute: "initial-questions-url" },
   language: { type: String, attribute: "language" },
-  showRelatedFaqs: { type: Boolean, attribute: "show-related-faqs" }
+  showRelatedFaqs: { type: Boolean, attribute: "show-related-faqs" },
+  errorMessage: { type: String, attribute: "error-message" }
 };
 __decorateClass([
   state()

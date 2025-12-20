@@ -733,6 +733,16 @@
             },
             {
               "kind": "field",
+              "name": "errorMessage",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'Maaf, terdapat masalah semasa menghubungi pelayan. Sila cuba lagi.'",
+              "attribute": "error-message"
+            },
+            {
+              "kind": "field",
               "name": "messages",
               "type": {
                 "text": "Message[]"
@@ -1131,6 +1141,14 @@
               },
               "default": "false",
               "fieldName": "showRelatedFaqs"
+            },
+            {
+              "name": "error-message",
+              "type": {
+                "text": "string"
+              },
+              "default": "'Maaf, terdapat masalah semasa menghubungi pelayan. Sila cuba lagi.'",
+              "fieldName": "errorMessage"
             }
           ],
           "superclass": {

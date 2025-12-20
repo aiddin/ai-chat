@@ -4,7 +4,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
-const VERSION = '0.2.13';
+const VERSION = '0.2.17';
 
 export interface FAQ {
   No: string;
@@ -568,6 +568,9 @@ export class AIChat extends LitElement {
       padding: 0.875rem 1.125rem;
       border-radius: 1.25rem;
       line-height: 1.6;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      min-width: 0;
     }
 
     .message.user .message-content {
@@ -596,6 +599,8 @@ export class AIChat extends LitElement {
       white-space: pre-wrap;
       margin: 0;
       word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
 
     .message-text ul,
@@ -836,6 +841,7 @@ export class AIChat extends LitElement {
   declare initialQuestionsUrl: string;
   declare language: string;
   declare showRelatedFaqs: boolean;
+  declare errorMessage: string;
 
   @state()
   private declare messages: Message[];
@@ -871,6 +877,7 @@ export class AIChat extends LitElement {
     initialQuestionsUrl: { type: String, attribute: 'initial-questions-url' },
     language: { type: String, attribute: 'language' },
     showRelatedFaqs: { type: Boolean, attribute: 'show-related-faqs' },
+    errorMessage: { type: String, attribute: 'error-message' },
   };
 
   constructor() {
@@ -895,6 +902,7 @@ export class AIChat extends LitElement {
     this.initialQuestionsUrl = '';
     this.language = 'en';
     this.showRelatedFaqs = false;
+    this.errorMessage = 'Maaf, terdapat masalah semasa menghubungi pelayan. Sila cuba lagi.';
     this.messages = [];
     this.input = '';
     this.isLoading = false;
@@ -967,7 +975,6 @@ export class AIChat extends LitElement {
 
       if (lastSessionId && lastSessionId !== this.sessionId) {
         // Session has changed, clear the old session's messages
-        console.log(`🔄 Session changed from "${lastSessionId}" to "${this.sessionId}", clearing old messages`);
         const oldStorageKey = `ai-chat-messages-${lastSessionId}`;
         sessionStorage.removeItem(oldStorageKey);
         sessionStorage.setItem('ai-chat-last-session-id', this.sessionId);
@@ -1117,6 +1124,7 @@ export class AIChat extends LitElement {
     } else {
       // Fetch initial suggested questions if URL is provided
       let suggestedQuestions: SuggestedQuestion[] | undefined = undefined;
+      let fetchFailed = false;
 
       if (this.initialQuestionsUrl) {
         try {
@@ -1127,11 +1135,9 @@ export class AIChat extends LitElement {
             fetchUrl = `${fetchUrl}${separator}language=${this.language}`;
           }
 
-          console.log('📤 Fetching initial questions from:', fetchUrl);
           const response = await fetch(fetchUrl);
           if (response.ok) {
             const data = await response.json();
-            console.log('📥 Fetched initial questions:', data);
 
             // Support various response formats
             let questionsArray = data.questions || data.suggested_questions || data;
@@ -1153,14 +1159,21 @@ export class AIChat extends LitElement {
                 }));
               }
             }
-
-            console.log('✅ Processed suggested questions:', suggestedQuestions);
+          } else {
+            fetchFailed = true;
           }
         } catch (error) {
           console.warn('Failed to fetch initial questions:', error);
+          fetchFailed = true;
         }
       }
 
+      // If fetch failed, clear session storage
+      if (fetchFailed) {
+        this.clearMessagesFromStorage();
+      }
+
+      // Always show welcome message if available
       if (this.welcomeMessage) {
         // Add welcome message as initial assistant message
         const welcomeText = this.welcomeSubtitle
@@ -1279,8 +1292,6 @@ export class AIChat extends LitElement {
 
       const url = `${baseUrl}/api/questions/${question.id}?question_type=${question.question_type}`;
 
-      console.log('📤 Calling suggested question API:', url);
-
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -1292,7 +1303,6 @@ export class AIChat extends LitElement {
       }
 
       const data = await response.json();
-      console.log('🔍 Suggested question API response:', data);
 
       // Extract response text from the API response
       let responseText = 'No response from agent';
@@ -1338,7 +1348,7 @@ export class AIChat extends LitElement {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}\n\nPlease check your API endpoint configuration.`,
+        content: this.errorMessage,
       };
 
       this.messages = [...this.messages, errorMessage];
@@ -1393,7 +1403,6 @@ export class AIChat extends LitElement {
       }
 
       const data = await response.json();
-      console.log('🔍 Raw API response:', data);
 
       // Extract the response text and suggested questions
       let responseText = 'No response from agent';
@@ -1401,34 +1410,23 @@ export class AIChat extends LitElement {
       let suggestedQuestions: SuggestedQuestion[] | undefined = undefined;
 
       if (data && typeof data === 'object' && data.response && typeof data.response === 'string') {
-        console.log('📝 data.response type:', typeof data.response);
-        console.log('📝 data.response preview:', data.response.substring(0, 100));
-
         // Check if data.response contains stringified JSON
         const trimmedResponse = data.response.trim();
         if (trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[')) {
-          console.log('🔄 Detected stringified JSON, parsing...');
-
           try {
             // First attempt: standard JSON.parse
             const innerData = JSON.parse(data.response);
-            console.log('✅ Parsed inner data with JSON.parse');
 
             if (innerData && innerData.response && typeof innerData.response === 'string') {
               responseText = innerData.response;
               faqs = innerData.faq_used || innerData.faqs_used || undefined;
               suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
-              console.log('✅ Extracted text length:', responseText.length);
-              console.log('✅ Extracted FAQs count:', faqs?.length || 0);
-              console.log('✅ Extracted suggested questions count:', suggestedQuestions?.length || 0);
             } else {
               responseText = data.response;
               faqs = data.faq_used || data.faqs_used || undefined;
               suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
             }
           } catch (parseError) {
-            console.warn('⚠️ JSON.parse failed, using regex extraction...', parseError);
-
             // Backend has malformed JSON - extract response text
             const responsePattern = /"response"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/s;
             const responseMatch = data.response.match(responsePattern);
@@ -1440,9 +1438,7 @@ export class AIChat extends LitElement {
                 .replace(/\\r/g, '\r')
                 .replace(/\\"/g, '"')
                 .replace(/\\\\/g, '\\');
-              console.log('✅ Extracted response text, length:', responseText.length);
             } else {
-              console.error('❌ Could not extract response');
               responseText = 'Error: Could not parse response';
             }
 
@@ -1453,16 +1449,13 @@ export class AIChat extends LitElement {
             if (faqsMatch) {
               try {
                 faqs = JSON.parse(faqsMatch[1]);
-                console.log('✅ Extracted FAQs, count:', faqs?.length || 0);
               } catch {
-                console.log('⚠️ Could not parse FAQs, trying multiline...');
                 // FAQs might span multiple lines
                 const faqsMultiPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
                 const faqsMultiMatch = data.response.match(faqsMultiPattern);
                 if (faqsMultiMatch) {
                   try {
                     faqs = JSON.parse(faqsMultiMatch[1]);
-                    console.log('✅ Extracted multi-line FAQs, count:', faqs?.length || 0);
                   } catch {
                     faqs = undefined;
                   }
@@ -1478,16 +1471,13 @@ export class AIChat extends LitElement {
               try {
                 const parsedQuestions = JSON.parse(suggestedMatch[1]);
                 suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
-                console.log('✅ Extracted suggested questions, count:', suggestedQuestions?.length || 0);
               } catch {
-                console.log('⚠️ Could not parse suggested questions, trying multiline...');
                 const suggestedMultiPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
                 const suggestedMultiMatch = data.response.match(suggestedMultiPattern);
                 if (suggestedMultiMatch) {
                   try {
                     const parsedQuestions = JSON.parse(suggestedMultiMatch[1]);
                     suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
-                    console.log('✅ Extracted multi-line suggested questions, count:', suggestedQuestions?.length || 0);
                   } catch {
                     suggestedQuestions = undefined;
                   }
@@ -1497,26 +1487,18 @@ export class AIChat extends LitElement {
           }
         } else {
           // Not JSON, direct text response
-          console.log('📄 Direct text response (not JSON)');
           responseText = data.response;
           faqs = data.faq_used || data.faqs_used || undefined;
           suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
         }
       } else if (typeof data === 'string') {
-        console.log('📄 Response is a plain string');
         responseText = data;
       } else if (data && typeof data === 'object') {
         // Fallback for other formats
-        console.warn('⚠️ Unexpected format, using fallback');
         responseText = data.message || data.answer || 'Error: Unexpected response format';
         faqs = data.faq_used || data.faqs_used || undefined;
         suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
       }
-
-      console.log('🎯 Final responseText length:', responseText.length);
-      console.log('🎯 Final responseText preview:', responseText.substring(0, 100));
-      console.log('🎯 Final FAQs:', faqs);
-      console.log('🎯 Final suggested questions:', suggestedQuestions);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -1540,7 +1522,7 @@ export class AIChat extends LitElement {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}\n\nPlease check your API endpoint configuration.`,
+        content: this.errorMessage,
       };
 
       this.messages = [...this.messages, errorMessage];
