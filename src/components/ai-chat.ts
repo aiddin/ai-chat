@@ -4,7 +4,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
-const VERSION = '0.2.17';
+const VERSION = '0.2.18';
 
 export interface FAQ {
   No: string;
@@ -828,6 +828,7 @@ export class AIChat extends LitElement {
   declare mode: 'fullscreen' | 'widget';
   declare initialMessages: Message[];
   declare botAvatarUrl: string;
+  declare userAvatarUrl: string;
   declare widgetIconUrl: string;
   declare backgroundImageUrl: string;
   declare widgetWidth: string;
@@ -864,6 +865,7 @@ export class AIChat extends LitElement {
     mode: { type: String, reflect: true },
     initialMessages: { type: Array },
     botAvatarUrl: { type: String, attribute: 'bot-avatar-url' },
+    userAvatarUrl: { type: String, attribute: 'user-avatar-url' },
     widgetIconUrl: { type: String, attribute: 'widget-icon-url' },
     backgroundImageUrl: { type: String, attribute: 'background-image-url' },
     widgetWidth: { type: String, attribute: 'widget-width' },
@@ -889,6 +891,7 @@ export class AIChat extends LitElement {
     this.mode = 'fullscreen';
     this.initialMessages = [];
     this.botAvatarUrl = '';
+    this.userAvatarUrl = '';
     this.widgetIconUrl = '';
     this.backgroundImageUrl = '';
     this.widgetWidth = '380px';
@@ -1569,7 +1572,11 @@ export class AIChat extends LitElement {
             >
               <div class="avatar">
                 ${msg.role === 'user'
-                  ? 'U'
+                  ? this.userAvatarUrl
+                    ? html`<img src="${this.userAvatarUrl}" alt="User" class="avatar-image" />`
+                    : html`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                      </svg>`
                   : this.botAvatarUrl
                     ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />`
                     : 'AI'}
@@ -1590,7 +1597,7 @@ export class AIChat extends LitElement {
                 ` : ''}
                 ${msg.role === 'assistant' && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? html`
                   <div class="faq-section">
-                    <p class="faq-title">Suggested Questions:</p>
+                    <p class="faq-title">Cadangan Soalan:</p>
                     <ul class="faq-list">
                       ${msg.suggestedQuestions.map(question => html`
                         <li class="faq-item" @click=${() => this.handleFAQClick(question)}>

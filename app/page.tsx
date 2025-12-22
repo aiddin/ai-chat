@@ -33,6 +33,7 @@ export default function Home() {
         user-message-bg="#D6E4FF"
         bot-message-bg="#F5F5F5"
         error-message="Maaf, terdapat masalah semasa menghubungi pelayan. Sila cuba lagi."
+        user-avatar-url="https://api.dicebear.com/7.x/bottts/svg?seed=mysti"
       />
     </div>
   );

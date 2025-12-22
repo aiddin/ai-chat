@@ -66,6 +66,7 @@ declare class AIChat extends LitElement {
     mode: 'fullscreen' | 'widget';
     initialMessages: Message[];
     botAvatarUrl: string;
+    userAvatarUrl: string;
     widgetIconUrl: string;
     backgroundImageUrl: string;
     widgetWidth: string;
@@ -108,6 +109,10 @@ declare class AIChat extends LitElement {
             type: ArrayConstructor;
         };
         botAvatarUrl: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        userAvatarUrl: {
             type: StringConstructor;
             attribute: string;
         };

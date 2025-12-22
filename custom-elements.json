@@ -603,6 +603,16 @@
             },
             {
               "kind": "field",
+              "name": "userAvatarUrl",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "attribute": "user-avatar-url"
+            },
+            {
+              "kind": "field",
               "name": "widgetIconUrl",
               "privacy": "public",
               "type": {
@@ -1037,6 +1047,14 @@
               },
               "default": "''",
               "fieldName": "botAvatarUrl"
+            },
+            {
+              "name": "user-avatar-url",
+              "type": {
+                "text": "string"
+              },
+              "default": "''",
+              "fieldName": "userAvatarUrl"
             },
             {
               "name": "widget-icon-url",
