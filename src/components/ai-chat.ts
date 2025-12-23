@@ -3,17 +3,33 @@ import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import MarkdownIt from 'markdown-it';
 
-const VERSION = '0.2.18';
+console.log('Chatbot Ver = 0.2.21-beta.0');
+const md = new MarkdownIt({
+  html: false, // Disable HTML tags in source for security
+  breaks: true, // Convert '\n' in paragraphs into <br>
+  linkify: true, // Autoconvert URL-like text to links
+});
 
 export interface FAQ {
   No: string;
   Question: string;
 }
 
+export interface Confidence {
+  confidence_score: number;
+  is_confident: boolean;
+}
+
 export interface SuggestedQuestion {
+  // New API format (capitalized)
+  Id?: string;
+  QuestionType?: string;
+  // Legacy format (lowercase)
   id?: number;
   question_type?: string;
+  // Question text (fetched separately or provided)
   question_text: string;
   category?: string;
 }
@@ -24,6 +40,7 @@ export interface Message {
   content: string;
   faqs?: FAQ[];
   suggestedQuestions?: SuggestedQuestion[];
+  confidence?: Confidence;
 }
 
 /**
@@ -109,6 +126,7 @@ export class AIChat extends LitElement {
       justify-content: center;
       box-shadow: 0 4px 16px rgba(65, 105, 225, 0.3);
       transition: transform 0.2s, box-shadow 0.2s;
+      overflow: hidden;
     }
 
     .widget-button:hover {
@@ -134,10 +152,8 @@ export class AIChat extends LitElement {
     }
 
     .widget-button-icon {
-      width: 100%;
-      height: 100%;
-      max-width: 60px;
-      max-height: 60px;
+      width: 60px;
+      height: 60px;
       object-fit: contain;
       border-radius: 50%;
     }
@@ -1005,112 +1021,9 @@ export class AIChat extends LitElement {
   }
 
   private formatMessageContent(content: string): string {
-    // Escape HTML to prevent XSS
-    const escapeHtml = (text: string) => {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    };
-
-    // Add line break before numbered lists that come after any text (not already on new line)
-    let processedContent = content.replace(/([^\n])\s*(\d+\.\s+)/g, '$1\n$2');
-
-    // First, split inline numbered lists (1. 2. 3. pattern)
-    processedContent = processedContent.replace(/(\d+\.\s+[^0-9]+?)(?=\s+\d+\.\s+|\s*$)/g, '$1\n');
-
-    // Split inline bullet lists (- pattern)
-    processedContent = processedContent.replace(/(-\s+[^-]+?)(?=\s+-\s+|\s*$)/g, '$1\n');
-
-    // Split content by lines
-    const lines = processedContent.split('\n');
-    let formattedContent = '';
-    let inList = false;
-    let listType: 'ul' | 'ol' | null = null;
-    let orderedListCounter = 1; // Track the current numbered list counter
-
-    // Helper function to check if next non-empty line is a list item
-    const getNextListType = (startIndex: number): 'ul' | 'ol' | null => {
-      for (let j = startIndex + 1; j < lines.length; j++) {
-        const nextLine = lines[j].trim();
-        if (nextLine === '') continue; // Skip blank lines
-        if (nextLine.match(/^[-*•]\s+/)) return 'ul';
-        if (nextLine.match(/^\d+\.\s+/)) return 'ol';
-        return null; // Found non-list content
-      }
-      return null; // End of content
-    };
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmedLine = line.trim();
-
-      // Check for unordered list (-, *, •)
-      const unorderedMatch = trimmedLine.match(/^[-*•]\s+(.+)$/);
-      // Check for ordered list (1., 2., etc.)
-      const orderedMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
-
-      if (unorderedMatch) {
-        if (!inList || listType !== 'ul') {
-          if (inList) formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
-          formattedContent += '<ul>';
-          inList = true;
-          listType = 'ul';
-        }
-        formattedContent += `<li>${escapeHtml(unorderedMatch[1])}</li>`;
-      } else if (orderedMatch) {
-        const itemNumber = parseInt(orderedMatch[1], 10);
-        const itemText = orderedMatch[2];
-
-        if (!inList || listType !== 'ol') {
-          if (inList) formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
-          // Use the start attribute to continue numbering from where we left off
-          // or reset to 1 if this is a new sequence starting with 1
-          if (itemNumber === 1) {
-            orderedListCounter = 1;
-            formattedContent += '<ol>';
-          } else {
-            formattedContent += `<ol start="${orderedListCounter}">`;
-          }
-          inList = true;
-          listType = 'ol';
-        }
-        formattedContent += `<li value="${itemNumber}">${escapeHtml(itemText)}</li>`;
-        orderedListCounter = itemNumber + 1; // Track next number
-      } else {
-        // Not a list item
-        if (trimmedLine === '') {
-          // Blank line - check if next line continues the same list type
-          const nextListType = getNextListType(i);
-          if (inList && nextListType === listType) {
-            // Keep list open and add spacing within the list
-            formattedContent += '<li style="list-style: none; height: 0.5em;"></li>';
-          } else {
-            // Close list if we're in one
-            if (inList) {
-              formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
-              inList = false;
-              listType = null;
-            }
-            formattedContent += '<br>';
-          }
-        } else {
-          // Non-blank, non-list content
-          if (inList) {
-            formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
-            inList = false;
-            listType = null;
-          }
-          formattedContent += escapeHtml(line) + '\n';
-        }
-      }
-    }
-
-    // Close any open list
-    if (inList) {
-      formattedContent += listType === 'ol' ? '</ol>' : '</ul>';
-    }
-
-    return formattedContent;
+    // Use markdown-it to parse markdown content
+    // markdown-it automatically escapes HTML for security when html: false is set
+    return md.render(content);
   }
 
   async connectedCallback() {
@@ -1143,7 +1056,7 @@ export class AIChat extends LitElement {
             const data = await response.json();
 
             // Support various response formats
-            let questionsArray = data.questions || data.suggested_questions || data;
+            const questionsArray = data.questions || data.suggested_questions || data;
 
             // If array contains objects with question_text property, store full objects
             if (Array.isArray(questionsArray) && questionsArray.length > 0) {
@@ -1215,7 +1128,10 @@ export class AIChat extends LitElement {
   }
 
   /**
-   * Normalize suggested questions - converts string arrays to SuggestedQuestion objects
+   * Normalize suggested questions - handles multiple formats:
+   * - Objects with question_text (legacy format)
+   * - Objects with Id/QuestionType (new API format - question_text will be fetched)
+   * - String arrays (legacy format)
    */
   private normalizeSuggestedQuestions(questions: any): SuggestedQuestion[] | undefined {
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
@@ -1224,6 +1140,12 @@ export class AIChat extends LitElement {
 
     // If already objects with question_text, return as-is
     if (typeof questions[0] === 'object' && questions[0].question_text) {
+      return questions as SuggestedQuestion[];
+    }
+
+    // If objects with Id/QuestionType (new API format), return as-is
+    // The question_text will be fetched later
+    if (typeof questions[0] === 'object' && (questions[0].Id || questions[0].id)) {
       return questions as SuggestedQuestion[];
     }
 
@@ -1241,11 +1163,100 @@ export class AIChat extends LitElement {
     this.input = (e.target as HTMLInputElement).value;
   }
 
+  /**
+   * Fetch question texts for suggested questions from the API
+   * @param questions Array of suggested questions with Id and QuestionType
+   * @returns Array of complete SuggestedQuestion objects with question_text
+   */
+  private async fetchQuestionTexts(questions: Array<{Id: string, QuestionType: string}>): Promise<SuggestedQuestion[]> {
+    if (!questions || questions.length === 0) {
+      return [];
+    }
+
+    // Extract base URL from initialQuestionsUrl or apiUrl
+    let baseUrl = '';
+    if (this.initialQuestionsUrl) {
+      try {
+        const urlObj = new URL(this.initialQuestionsUrl);
+        baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+      } catch {
+        // Fallback to apiUrl if available
+        if (this.apiUrl) {
+          try {
+            const urlObj = new URL(this.apiUrl);
+            baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+          } catch {
+            console.error('Failed to parse API URL');
+            return [];
+          }
+        } else {
+          return [];
+        }
+      }
+    } else if (this.apiUrl) {
+      try {
+        const urlObj = new URL(this.apiUrl);
+        baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+      } catch {
+        console.error('Failed to parse API URL');
+        return [];
+      }
+    } else {
+      return [];
+    }
+
+    // Fetch all question texts in parallel
+    const fetchPromises = questions.map(async (q) => {
+      try {
+        const url = `${baseUrl}/api/questions/${q.Id}?question_type=${q.QuestionType}`;
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+          console.warn(`Failed to fetch question ${q.Id}:`, response.status);
+          return null;
+        }
+
+        const data = await response.json();
+
+        // Extract question text from the response
+        let questionText = '';
+        if (data && typeof data === 'object') {
+          if (data.question && data.question.question_text) {
+            questionText = data.question.question_text;
+          } else if (data.question_text) {
+            questionText = data.question_text;
+          }
+        }
+
+        if (!questionText) {
+          console.warn(`No question text found for question ${q.Id}`);
+          return null;
+        }
+
+        return {
+          Id: q.Id,
+          QuestionType: q.QuestionType,
+          question_text: questionText,
+        } as SuggestedQuestion;
+      } catch (error) {
+        console.error(`Error fetching question ${q.Id}:`, error);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(fetchPromises);
+    // Filter out null results (failed fetches)
+    return results.filter((q): q is SuggestedQuestion => q !== null);
+  }
+
   private async handleFAQClick(question: SuggestedQuestion) {
     if (this.isLoading) return;
 
-    // Check if this is a suggested question with id and question_type
-    if (question.id && question.question_type) {
+    // Check if this is a suggested question with ID (new format with capitalized fields or old format)
+    if ((question.Id && question.QuestionType) || (question.id && question.question_type)) {
       // Call the new API endpoint for suggested questions
       await this.handleSuggestedQuestionClick(question);
     } else {
@@ -1259,7 +1270,11 @@ export class AIChat extends LitElement {
   }
 
   private async handleSuggestedQuestionClick(question: SuggestedQuestion) {
-    if (!question.id || !question.question_type) return;
+    // Support both new format (Id, QuestionType) and old format (id, question_type)
+    const questionId = question.Id || question.id;
+    const questionType = question.QuestionType || question.question_type;
+
+    if (!questionId || !questionType) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -1293,7 +1308,7 @@ export class AIChat extends LitElement {
         baseUrl = 'http://43.217.183.120:8080';
       }
 
-      const url = `${baseUrl}/api/questions/${question.id}?question_type=${question.question_type}`;
+      const url = `${baseUrl}/api/questions/${questionId}?question_type=${questionType}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -1407,10 +1422,11 @@ export class AIChat extends LitElement {
 
       const data = await response.json();
 
-      // Extract the response text and suggested questions
+      // Extract the response text, FAQs, suggested questions, and confidence
       let responseText = 'No response from agent';
       let faqs: FAQ[] | undefined = undefined;
       let suggestedQuestions: SuggestedQuestion[] | undefined = undefined;
+      let confidence: Confidence | undefined = undefined;
 
       if (data && typeof data === 'object' && data.response && typeof data.response === 'string') {
         // Check if data.response contains stringified JSON
@@ -1424,10 +1440,12 @@ export class AIChat extends LitElement {
               responseText = innerData.response;
               faqs = innerData.faq_used || innerData.faqs_used || undefined;
               suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
+              confidence = innerData.confident || innerData.confidence || undefined;
             } else {
               responseText = data.response;
               faqs = data.faq_used || data.faqs_used || undefined;
               suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
+              confidence = data.confident || data.confidence || undefined;
             }
           } catch (parseError) {
             // Backend has malformed JSON - extract response text
@@ -1489,10 +1507,11 @@ export class AIChat extends LitElement {
             }
           }
         } else {
-          // Not JSON, direct text response
+          // Not JSON, direct text response - this is the NEW API format
           responseText = data.response;
           faqs = data.faq_used || data.faqs_used || undefined;
           suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
+          confidence = data.confident || data.confidence || undefined;
         }
       } else if (typeof data === 'string') {
         responseText = data;
@@ -1501,6 +1520,31 @@ export class AIChat extends LitElement {
         responseText = data.message || data.answer || 'Error: Unexpected response format';
         faqs = data.faq_used || data.faqs_used || undefined;
         suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
+        confidence = data.confident || data.confidence || undefined;
+      }
+
+      // Handle new suggested_questions format: if questions have Id/QuestionType but no question_text, fetch them
+      if (suggestedQuestions && suggestedQuestions.length > 0) {
+        const questionsNeedingText = suggestedQuestions.filter(q =>
+          (q.Id || q.id) && (q.QuestionType || q.question_type) && !q.question_text
+        );
+
+        if (questionsNeedingText.length > 0) {
+          // Convert to the format expected by fetchQuestionTexts
+          const questionsToFetch = questionsNeedingText.map(q => ({
+            Id: (q.Id || q.id?.toString()) as string,
+            QuestionType: (q.QuestionType || q.question_type) as string
+          }));
+
+          // Fetch question texts
+          const fetchedQuestions = await this.fetchQuestionTexts(questionsToFetch);
+
+          // Replace the questions without text with the fetched ones
+          suggestedQuestions = [
+            ...suggestedQuestions.filter(q => q.question_text), // Keep questions that already have text
+            ...fetchedQuestions // Add newly fetched questions
+          ];
+        }
       }
 
       const assistantMessage: Message = {
@@ -1509,6 +1553,7 @@ export class AIChat extends LitElement {
         content: responseText,
         faqs: faqs,
         suggestedQuestions: suggestedQuestions,
+        confidence: confidence,
       };
 
       this.messages = [...this.messages, assistantMessage];
@@ -1655,8 +1700,6 @@ export class AIChat extends LitElement {
         </form>
       </div>
 
-      <!-- Version -->
-      <div class="version-tag">v${VERSION}</div>
     `;
   }
 

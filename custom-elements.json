@@ -72,6 +72,11 @@
       "declarations": [
         {
           "kind": "variable",
+          "name": "pos",
+          "default": "start"
+        },
+        {
+          "kind": "variable",
           "name": "suggestedQuestions",
           "default": "void 0"
         }
@@ -908,7 +913,7 @@
                   }
                 }
               ],
-              "description": "Normalize suggested questions - converts string arrays to SuggestedQuestion objects"
+              "description": "Normalize suggested questions - handles multiple formats:\r\n- Objects with question_text (legacy format)\r\n- Objects with Id/QuestionType (new API format - question_text will be fetched)\r\n- String arrays (legacy format)"
             },
             {
               "kind": "method",
@@ -922,6 +927,26 @@
                   }
                 }
               ]
+            },
+            {
+              "kind": "method",
+              "name": "fetchQuestionTexts",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": ""
+                }
+              },
+              "parameters": [
+                {
+                  "name": "questions",
+                  "type": {
+                    "text": "Array<{Id: string, QuestionType: string}>"
+                  },
+                  "description": "Array of suggested questions with Id and QuestionType"
+                }
+              ],
+              "description": "Fetch question texts for suggested questions from the API"
             },
             {
               "kind": "method",

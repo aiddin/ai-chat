@@ -6,7 +6,13 @@ interface FAQ {
     No: string;
     Question: string;
 }
+interface Confidence {
+    confidence_score: number;
+    is_confident: boolean;
+}
 interface SuggestedQuestion {
+    Id?: string;
+    QuestionType?: string;
     id?: number;
     question_type?: string;
     question_text: string;
@@ -18,6 +24,7 @@ interface Message {
     content: string;
     faqs?: FAQ[];
     suggestedQuestions?: SuggestedQuestion[];
+    confidence?: Confidence;
 }
 /**
  * AI Chat Web Component
@@ -190,10 +197,19 @@ declare class AIChat extends LitElement {
     updated(changedProperties: PropertyValues): void;
     private scrollToBottom;
     /**
-     * Normalize suggested questions - converts string arrays to SuggestedQuestion objects
+     * Normalize suggested questions - handles multiple formats:
+     * - Objects with question_text (legacy format)
+     * - Objects with Id/QuestionType (new API format - question_text will be fetched)
+     * - String arrays (legacy format)
      */
     private normalizeSuggestedQuestions;
     private handleInput;
+    /**
+     * Fetch question texts for suggested questions from the API
+     * @param questions Array of suggested questions with Id and QuestionType
+     * @returns Array of complete SuggestedQuestion objects with question_text
+     */
+    private fetchQuestionTexts;
     private handleFAQClick;
     private handleSuggestedQuestionClick;
     private handleSubmit;
