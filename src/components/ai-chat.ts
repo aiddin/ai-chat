@@ -245,6 +245,10 @@ export class AIChat extends LitElement {
 
     /* Mobile responsive styles for all modes */
     @media (max-width: 768px) {
+      .contact-support-wrapper {
+        margin-left: 2.75rem;
+      }
+
       .header {
         padding: 0.875rem 1rem;
       }
@@ -324,6 +328,10 @@ export class AIChat extends LitElement {
 
     /* Extra small screens */
     @media (max-width: 480px) {
+      .contact-support-wrapper {
+        margin-left: 2.25rem;
+      }
+
       .header {
         padding: 0.75rem 0.875rem;
       }
@@ -550,6 +558,7 @@ export class AIChat extends LitElement {
 
     .message.user {
       flex-direction: row-reverse;
+      justify-content: flex-start;
     }
 
     .avatar {
@@ -815,20 +824,16 @@ export class AIChat extends LitElement {
       color: #FCD34D;
     }
 
-    .contact-support-container {
-      position: sticky;
-      bottom: 0;
-      z-index: 10;
-      margin-top: 0.75rem;
-      padding-bottom: 0.5rem;
+    .contact-support-wrapper {
       display: flex;
-      justify-content: center;
-      pointer-events: none;
+      justify-content: flex-start;
+      margin-top: 0.75rem;
+      margin-left: 3.5rem;
     }
 
     .contact-support-button {
       padding: 0.625rem 1.25rem;
-      background: #fff;
+      background: transparent;
       color: var(--primary-color, #3681D3);
       border: 1.5px solid var(--primary-color, #3681D3);
       border-radius: 1.5rem;
@@ -839,24 +844,19 @@ export class AIChat extends LitElement {
       display: inline-block;
       text-decoration: none;
       white-space: nowrap;
-      pointer-events: auto;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .contact-support-button:hover {
       background: var(--primary-color, #3681D3);
       color: #fff;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(54, 129, 211, 0.25);
     }
 
     .contact-support-button:active {
-      transform: translateY(0);
-      box-shadow: 0 1px 4px rgba(54, 129, 211, 0.2);
+      transform: scale(0.98);
     }
 
     :host([theme="dark"]) .contact-support-button {
-      background: #18181b;
+      background: transparent;
       color: var(--primary-color-light, #5B7FE8);
       border-color: var(--primary-color-light, #5B7FE8);
     }
@@ -1766,64 +1766,62 @@ export class AIChat extends LitElement {
       <div class="messages-area" style="--user-message-bg: ${this.userMessageBg}; --bot-message-bg: ${this.botMessageBg}; --primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover}; ${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}');` : ''}">
         <div class="messages-container">
           ${repeat(this.messages, (msg) => msg.id, (msg) => html`
-            <div
-              class=${classMap({
-                message: true,
-                user: msg.role === 'user',
-                assistant: msg.role === 'assistant'
-              })}
-            >
-              <div class="avatar">
-                ${msg.role === 'user'
-                  ? this.userAvatarUrl
-                    ? html`<img src="${this.userAvatarUrl}" alt="User" class="avatar-image" />`
-                    : html`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                      </svg>`
-                  : this.botAvatarUrl
-                    ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />`
-                    : 'AI'}
+            <div>
+              <div
+                class=${classMap({
+                  message: true,
+                  user: msg.role === 'user',
+                  assistant: msg.role === 'assistant'
+                })}
+              >
+                ${msg.role === 'assistant' ? html`
+                  <div class="avatar">
+                    ${this.botAvatarUrl
+                      ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />`
+                      : 'AI'}
+                  </div>
+                ` : ''}
+                <div class="message-content">
+                  <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
+                  ${msg.role === 'assistant' && this.showRelatedFaqs && msg.faqs && msg.faqs.length > 0 ? html`
+                    <div class="faq-section">
+                      <p class="faq-title">Related FAQs:</p>
+                      <ul class="faq-list">
+                        ${msg.faqs.map(faq => html`
+                          <li class="faq-item-static">
+                            ${faq.Question}
+                          </li>
+                        `)}
+                      </ul>
+                    </div>
+                  ` : ''}
+                  ${msg.role === 'assistant' && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? html`
+                    <div class="faq-section">
+                      <p class="faq-title">Cadangan Soalan:</p>
+                      <ul class="faq-list">
+                        ${msg.suggestedQuestions.map(question => html`
+                          <li class="faq-item" @click=${() => this.handleFAQClick(question)}>
+                            ${question.question_text}
+                          </li>
+                        `)}
+                      </ul>
+                    </div>
+                  ` : ''}
+                </div>
               </div>
-              <div class="message-content">
-                <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
-                ${msg.role === 'assistant' && msg.confidence && !msg.confidence.is_confident ? html`
-                  <div class="contact-support-container">
-                    <a
-                      href="${this.contactSupportUrl}"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="contact-support-button"
-                      style="--primary-color: ${this.primaryColor}; --primary-color-hover: ${this.primaryColorHover};"
-                    >
-                      ${this.contactSupportMessage}
-                    </a>
-                  </div>
-                ` : ''}
-                ${msg.role === 'assistant' && this.showRelatedFaqs && msg.faqs && msg.faqs.length > 0 ? html`
-                  <div class="faq-section">
-                    <p class="faq-title">Related FAQs:</p>
-                    <ul class="faq-list">
-                      ${msg.faqs.map(faq => html`
-                        <li class="faq-item-static">
-                          ${faq.Question}
-                        </li>
-                      `)}
-                    </ul>
-                  </div>
-                ` : ''}
-                ${msg.role === 'assistant' && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? html`
-                  <div class="faq-section">
-                    <p class="faq-title">Cadangan Soalan:</p>
-                    <ul class="faq-list">
-                      ${msg.suggestedQuestions.map(question => html`
-                        <li class="faq-item" @click=${() => this.handleFAQClick(question)}>
-                          ${question.question_text}
-                        </li>
-                      `)}
-                    </ul>
-                  </div>
-                ` : ''}
-              </div>
+              ${msg.role === 'assistant' && msg.confidence && !msg.confidence.is_confident ? html`
+                <div class="contact-support-wrapper">
+                  <a
+                    href="${this.contactSupportUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="contact-support-button"
+                    style="--primary-color: ${this.primaryColor}; --primary-color-hover: ${this.primaryColorHover};"
+                  >
+                    ${this.contactSupportMessage}
+                  </a>
+                </div>
+              ` : ''}
             </div>
           `)}
 
