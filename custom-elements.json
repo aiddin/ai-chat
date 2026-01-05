@@ -758,6 +758,36 @@
             },
             {
               "kind": "field",
+              "name": "lowConfidenceMessage",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'Sila hubungi helpdesk untuk pengesahan lanjut.'",
+              "attribute": "low-confidence-message"
+            },
+            {
+              "kind": "field",
+              "name": "contactSupportUrl",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'https://example.com/support'",
+              "attribute": "contact-support-url"
+            },
+            {
+              "kind": "field",
+              "name": "contactSupportMessage",
+              "privacy": "public",
+              "type": {
+                "text": "string"
+              },
+              "default": "'Hubungi Sokongan'",
+              "attribute": "contact-support-message"
+            },
+            {
+              "kind": "field",
               "name": "messages",
               "type": {
                 "text": "Message[]"
@@ -1192,6 +1222,30 @@
               },
               "default": "'Maaf, terdapat masalah semasa menghubungi pelayan. Sila cuba lagi.'",
               "fieldName": "errorMessage"
+            },
+            {
+              "name": "low-confidence-message",
+              "type": {
+                "text": "string"
+              },
+              "default": "'Sila hubungi helpdesk untuk pengesahan lanjut.'",
+              "fieldName": "lowConfidenceMessage"
+            },
+            {
+              "name": "contact-support-url",
+              "type": {
+                "text": "string"
+              },
+              "default": "'https://example.com/support'",
+              "fieldName": "contactSupportUrl"
+            },
+            {
+              "name": "contact-support-message",
+              "type": {
+                "text": "string"
+              },
+              "default": "'Hubungi Sokongan'",
+              "fieldName": "contactSupportMessage"
             }
           ],
           "superclass": {

@@ -88,6 +88,9 @@ declare class AIChat extends LitElement {
     language: string;
     showRelatedFaqs: boolean;
     errorMessage: string;
+    lowConfidenceMessage: string;
+    contactSupportUrl: string;
+    contactSupportMessage: string;
     private messages;
     private input;
     private isLoading;
@@ -176,6 +179,18 @@ declare class AIChat extends LitElement {
             attribute: string;
         };
         errorMessage: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        lowConfidenceMessage: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        contactSupportUrl: {
+            type: StringConstructor;
+            attribute: string;
+        };
+        contactSupportMessage: {
             type: StringConstructor;
             attribute: string;
         };

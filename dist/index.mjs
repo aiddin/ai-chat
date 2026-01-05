@@ -5371,7 +5371,7 @@ MarkdownIt.prototype.renderInline = function(src, env) {
 var lib_default = MarkdownIt;
 
 // src/components/ai-chat.ts
-console.log("Chatbot Ver = 0.2.20");
+console.log("Chatbot Ver = 0.2.21-beta.2");
 var md = new lib_default({
   html: false,
   // Disable HTML tags in source for security
@@ -5405,6 +5405,9 @@ var AIChat = class extends LitElement {
     this.language = "en";
     this.showRelatedFaqs = false;
     this.errorMessage = "Maaf, terdapat masalah semasa menghubungi pelayan. Sila cuba lagi.";
+    this.lowConfidenceMessage = "Sila hubungi helpdesk untuk pengesahan lanjut.";
+    this.contactSupportUrl = "https://example.com/support";
+    this.contactSupportMessage = "Hubungi Sokongan";
     this.messages = [];
     this.input = "";
     this.isLoading = false;
@@ -5798,7 +5801,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
               responseText = innerData.response;
               faqs = innerData.faq_used || innerData.faqs_used || void 0;
               suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
-              confidence = innerData.confident || innerData.confidence || void 0;
+              confidence = innerData.confident || innerData.confidence || "true";
             } else {
               responseText = data.response;
               faqs = data.faq_used || data.faqs_used || void 0;
@@ -5946,6 +5949,25 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
               </div>
               <div class="message-content">
                 <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
+                ${msg.role === "assistant" && msg.confidence && !msg.confidence.is_confident ? html`
+                  <div class="low-confidence-warning">
+                    <svg class="warning-icon" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                      <span>${this.lowConfidenceMessage}</span>
+                      <a
+                        href="${this.contactSupportUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="contact-support-button"
+                        style="--primary-color: ${this.primaryColor}; --primary-color-hover: ${this.primaryColorHover};"
+                      >
+                        ${this.contactSupportMessage}
+                      </a>
+                    </div>
+                  </div>
+                ` : ""}
                 ${msg.role === "assistant" && this.showRelatedFaqs && msg.faqs && msg.faqs.length > 0 ? html`
                   <div class="faq-section">
                     <p class="faq-title">Related FAQs:</p>
@@ -6251,7 +6273,6 @@ AIChat.styles = css`
 
       .message-content {
         max-width: 100%;
-        padding: 0.625rem 0.875rem;
         font-size: 0.9375rem;
       }
 
@@ -6558,7 +6579,7 @@ AIChat.styles = css`
 
     .message-content {
       max-width: 36rem;
-      padding: 0.875rem 1.125rem;
+      padding: 1.125rem;
       border-radius: 1.25rem;
       line-height: 1.6;
       overflow-wrap: break-word;
@@ -6589,11 +6610,22 @@ AIChat.styles = css`
     }
 
     .message-text {
-      white-space: pre-wrap;
       margin: 0;
       word-wrap: break-word;
       overflow-wrap: break-word;
       word-break: break-word;
+    }
+
+    .message-text p {
+      margin: 0 0 0.75rem 0;
+    }
+
+    .message-text p:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-text p:first-child {
+      margin-top: 0;
     }
 
     .message-text ul,
@@ -6622,6 +6654,63 @@ AIChat.styles = css`
     .message-text ol li {
       display: list-item;
       list-style-type: decimal;
+    }
+
+    .message-text h1,
+    .message-text h2,
+    .message-text h3,
+    .message-text h4,
+    .message-text h5,
+    .message-text h6 {
+      margin: 0.75rem 0 0.5rem 0;
+      font-weight: 600;
+    }
+
+    .message-text h1:first-child,
+    .message-text h2:first-child,
+    .message-text h3:first-child,
+    .message-text h4:first-child,
+    .message-text h5:first-child,
+    .message-text h6:first-child {
+      margin-top: 0;
+    }
+
+    .message-text blockquote {
+      margin: 0.5rem 0;
+      padding-left: 1rem;
+      border-left: 3px solid #d1d5db;
+    }
+
+    :host([theme="dark"]) .message-text blockquote {
+      border-left-color: #3f3f46;
+    }
+
+    .message-text code {
+      background: rgba(0, 0, 0, 0.05);
+      padding: 0.125rem 0.25rem;
+      border-radius: 0.25rem;
+      font-size: 0.875em;
+    }
+
+    :host([theme="dark"]) .message-text code {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .message-text pre {
+      margin: 0.5rem 0;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 0.5rem;
+      overflow-x: auto;
+    }
+
+    :host([theme="dark"]) .message-text pre {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .message-text pre code {
+      background: transparent;
+      padding: 0;
     }
 
     .faq-section {
@@ -6693,6 +6782,69 @@ AIChat.styles = css`
     :host([theme="dark"]) .faq-item-static {
       color: #9CA3AF;
     } */
+
+    .low-confidence-warning {
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: #FEF3C7;
+      border-left: 4px solid #F59E0B;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      color: #92400E;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    :host([theme="dark"]) .low-confidence-warning {
+      background: #451A03;
+      border-left-color: #F59E0B;
+      color: #FDE68A;
+    }
+
+    .warning-icon {
+      width: 1.125rem;
+      height: 1.125rem;
+      flex-shrink: 0;
+      margin-top: 0.125rem;
+      color: #F59E0B;
+    }
+
+    :host([theme="dark"]) .warning-icon {
+      color: #FCD34D;
+    }
+
+    .contact-support-button {
+      margin-top: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--primary-color, #3681D3);
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      display: inline-block;
+      text-decoration: none;
+    }
+
+    .contact-support-button:hover {
+      background: var(--primary-color-hover, #3457C7);
+      transform: translateY(-1px);
+    }
+
+    .contact-support-button:active {
+      transform: translateY(0);
+    }
+
+    :host([theme="dark"]) .contact-support-button {
+      background: var(--primary-color, #3681D3);
+    }
+
+    :host([theme="dark"]) .contact-support-button:hover {
+      background: var(--primary-color-hover, #3457C7);
+    }
 
     .loading {
       display: flex;
@@ -6835,7 +6987,10 @@ AIChat.properties = {
   initialQuestionsUrl: { type: String, attribute: "initial-questions-url" },
   language: { type: String, attribute: "language" },
   showRelatedFaqs: { type: Boolean, attribute: "show-related-faqs" },
-  errorMessage: { type: String, attribute: "error-message" }
+  errorMessage: { type: String, attribute: "error-message" },
+  lowConfidenceMessage: { type: String, attribute: "low-confidence-message" },
+  contactSupportUrl: { type: String, attribute: "contact-support-url" },
+  contactSupportMessage: { type: String, attribute: "contact-support-message" }
 };
 __decorateClass([
   state()

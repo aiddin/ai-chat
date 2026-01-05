@@ -5,7 +5,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import MarkdownIt from 'markdown-it';
 
-console.log('Chatbot Ver = 0.2.21-beta.0');
+console.log('Chatbot Ver = 0.2.21-beta.2');
 const md = new MarkdownIt({
   html: false, // Disable HTML tags in source for security
   breaks: true, // Convert '\n' in paragraphs into <br>
@@ -274,7 +274,6 @@ export class AIChat extends LitElement {
 
       .message-content {
         max-width: 100%;
-        padding: 0.625rem 0.875rem;
         font-size: 0.9375rem;
       }
 
@@ -581,7 +580,7 @@ export class AIChat extends LitElement {
 
     .message-content {
       max-width: 36rem;
-      padding: 0.875rem 1.125rem;
+      padding: 1.125rem;
       border-radius: 1.25rem;
       line-height: 1.6;
       overflow-wrap: break-word;
@@ -612,11 +611,22 @@ export class AIChat extends LitElement {
     }
 
     .message-text {
-      white-space: pre-wrap;
       margin: 0;
       word-wrap: break-word;
       overflow-wrap: break-word;
       word-break: break-word;
+    }
+
+    .message-text p {
+      margin: 0 0 0.75rem 0;
+    }
+
+    .message-text p:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-text p:first-child {
+      margin-top: 0;
     }
 
     .message-text ul,
@@ -645,6 +655,63 @@ export class AIChat extends LitElement {
     .message-text ol li {
       display: list-item;
       list-style-type: decimal;
+    }
+
+    .message-text h1,
+    .message-text h2,
+    .message-text h3,
+    .message-text h4,
+    .message-text h5,
+    .message-text h6 {
+      margin: 0.75rem 0 0.5rem 0;
+      font-weight: 600;
+    }
+
+    .message-text h1:first-child,
+    .message-text h2:first-child,
+    .message-text h3:first-child,
+    .message-text h4:first-child,
+    .message-text h5:first-child,
+    .message-text h6:first-child {
+      margin-top: 0;
+    }
+
+    .message-text blockquote {
+      margin: 0.5rem 0;
+      padding-left: 1rem;
+      border-left: 3px solid #d1d5db;
+    }
+
+    :host([theme="dark"]) .message-text blockquote {
+      border-left-color: #3f3f46;
+    }
+
+    .message-text code {
+      background: rgba(0, 0, 0, 0.05);
+      padding: 0.125rem 0.25rem;
+      border-radius: 0.25rem;
+      font-size: 0.875em;
+    }
+
+    :host([theme="dark"]) .message-text code {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .message-text pre {
+      margin: 0.5rem 0;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 0.5rem;
+      overflow-x: auto;
+    }
+
+    :host([theme="dark"]) .message-text pre {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .message-text pre code {
+      background: transparent;
+      padding: 0;
     }
 
     .faq-section {
@@ -716,6 +783,88 @@ export class AIChat extends LitElement {
     :host([theme="dark"]) .faq-item-static {
       color: #9CA3AF;
     } */
+
+    .low-confidence-warning {
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: #FEF3C7;
+      border-left: 4px solid #F59E0B;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      color: #92400E;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    :host([theme="dark"]) .low-confidence-warning {
+      background: #451A03;
+      border-left-color: #F59E0B;
+      color: #FDE68A;
+    }
+
+    .warning-icon {
+      width: 1.125rem;
+      height: 1.125rem;
+      flex-shrink: 0;
+      margin-top: 0.125rem;
+      color: #F59E0B;
+    }
+
+    :host([theme="dark"]) .warning-icon {
+      color: #FCD34D;
+    }
+
+    .contact-support-container {
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+      margin-top: 0.75rem;
+      padding-bottom: 0.5rem;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .contact-support-button {
+      padding: 0.625rem 1.25rem;
+      background: #fff;
+      color: var(--primary-color, #3681D3);
+      border: 1.5px solid var(--primary-color, #3681D3);
+      border-radius: 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-block;
+      text-decoration: none;
+      white-space: nowrap;
+      pointer-events: auto;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .contact-support-button:hover {
+      background: var(--primary-color, #3681D3);
+      color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(54, 129, 211, 0.25);
+    }
+
+    .contact-support-button:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(54, 129, 211, 0.2);
+    }
+
+    :host([theme="dark"]) .contact-support-button {
+      background: #18181b;
+      color: var(--primary-color-light, #5B7FE8);
+      border-color: var(--primary-color-light, #5B7FE8);
+    }
+
+    :host([theme="dark"]) .contact-support-button:hover {
+      background: var(--primary-color-light, #5B7FE8);
+      color: #18181b;
+    }
 
     .loading {
       display: flex;
@@ -859,6 +1008,9 @@ export class AIChat extends LitElement {
   declare language: string;
   declare showRelatedFaqs: boolean;
   declare errorMessage: string;
+  declare lowConfidenceMessage: string;
+  declare contactSupportUrl: string;
+  declare contactSupportMessage: string;
 
   @state()
   private declare messages: Message[];
@@ -896,6 +1048,9 @@ export class AIChat extends LitElement {
     language: { type: String, attribute: 'language' },
     showRelatedFaqs: { type: Boolean, attribute: 'show-related-faqs' },
     errorMessage: { type: String, attribute: 'error-message' },
+    lowConfidenceMessage: { type: String, attribute: 'low-confidence-message' },
+    contactSupportUrl: { type: String, attribute: 'contact-support-url' },
+    contactSupportMessage: { type: String, attribute: 'contact-support-message' },
   };
 
   constructor() {
@@ -922,6 +1077,9 @@ export class AIChat extends LitElement {
     this.language = 'en';
     this.showRelatedFaqs = false;
     this.errorMessage = 'Maaf, terdapat masalah semasa menghubungi pelayan. Sila cuba lagi.';
+    this.lowConfidenceMessage = 'Sila hubungi helpdesk untuk pengesahan lanjut.';
+    this.contactSupportUrl = 'https://example.com/support';
+    this.contactSupportMessage = 'Hubungi Sokongan';
     this.messages = [];
     this.input = '';
     this.isLoading = false;
@@ -1440,7 +1598,7 @@ export class AIChat extends LitElement {
               responseText = innerData.response;
               faqs = innerData.faq_used || innerData.faqs_used || undefined;
               suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
-              confidence = innerData.confident || innerData.confidence || undefined;
+              confidence = innerData.confident || innerData.confidence || 'true';
             } else {
               responseText = data.response;
               faqs = data.faq_used || data.faqs_used || undefined;
@@ -1628,6 +1786,19 @@ export class AIChat extends LitElement {
               </div>
               <div class="message-content">
                 <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
+                ${msg.role === 'assistant' && msg.confidence && !msg.confidence.is_confident ? html`
+                  <div class="contact-support-container">
+                    <a
+                      href="${this.contactSupportUrl}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="contact-support-button"
+                      style="--primary-color: ${this.primaryColor}; --primary-color-hover: ${this.primaryColorHover};"
+                    >
+                      ${this.contactSupportMessage}
+                    </a>
+                  </div>
+                ` : ''}
                 ${msg.role === 'assistant' && this.showRelatedFaqs && msg.faqs && msg.faqs.length > 0 ? html`
                   <div class="faq-section">
                     <p class="faq-title">Related FAQs:</p>

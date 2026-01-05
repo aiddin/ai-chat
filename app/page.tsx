@@ -7,7 +7,7 @@ import "@/src/components/ai-chat";
 export default function Home() {
   const chatRef = useRef<any>(null);
   const apiUrl =  "http://43.217.183.120:8000";
-
+// http://192.168.0.136:8000/ask
   return (
     <div style={{ minHeight: '100vh', padding: '2rem', background: '#f5f5f5' }}>
       <h1 style={{ marginBottom: '1rem' }}>AI Chat Widget Demo</h1>
@@ -18,7 +18,7 @@ export default function Home() {
       <ai-chat
         ref={chatRef}
         api-url={apiUrl}
-        session-id="demo-session"
+        session-id="asd123123"
         title="AI Assistant"
         theme="light"
         mode="widget"
@@ -34,6 +34,8 @@ export default function Home() {
         bot-message-bg="#F5F5F5"
         error-message="Maaf, terdapat masalah semasa menghubungi pelayan. Sila cuba lagi."
         user-avatar-url="https://api.dicebear.com/7.x/bottts/svg?seed=mysti"
+        contact-support-url="https://example.com/support"
+        contact-support-message="Hubungi Kami"
       />
     </div>
   );
