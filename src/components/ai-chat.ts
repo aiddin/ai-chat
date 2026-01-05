@@ -270,6 +270,14 @@ export class AIChat extends LitElement {
         gap: 0.75rem;
       }
 
+      .message.user {
+        margin-left: 3.5rem;
+      }
+
+      .message.assistant {
+        margin-right: 2.75rem;
+      }
+
       .avatar {
         width: 2rem;
         height: 2rem;
@@ -279,6 +287,11 @@ export class AIChat extends LitElement {
       .message-content {
         max-width: 100%;
         font-size: 0.9375rem;
+        padding: 0.875rem 1.25rem;
+      }
+
+      .message.user .message-content {
+        max-width: 85%;
       }
 
       .empty-state {
@@ -353,6 +366,14 @@ export class AIChat extends LitElement {
         gap: 0.5rem;
       }
 
+      .message.user {
+        margin-left: 3rem;
+      }
+
+      .message.assistant {
+        margin-right: 2.25rem;
+      }
+
       .avatar {
         width: 1.75rem;
         height: 1.75rem;
@@ -360,9 +381,13 @@ export class AIChat extends LitElement {
       }
 
       .message-content {
-        padding: 0.5rem 0.75rem;
+        padding: 0.75rem 1rem;
         font-size: 0.875rem;
         border-radius: 0.75rem;
+      }
+
+      .message.user .message-content {
+        max-width: 80%;
       }
 
       .empty-state {
@@ -558,7 +583,12 @@ export class AIChat extends LitElement {
 
     .message.user {
       flex-direction: row-reverse;
-      justify-content: flex-start;
+      justify-content: flex-end;
+      margin-left: 5rem;
+    }
+
+    .message.assistant {
+      margin-right: 3.5rem;
     }
 
     .avatar {
@@ -589,7 +619,7 @@ export class AIChat extends LitElement {
 
     .message-content {
       max-width: 36rem;
-      padding: 1.125rem;
+      padding: 1rem 1.5rem;
       border-radius: 1.25rem;
       line-height: 1.6;
       overflow-wrap: break-word;
@@ -600,13 +630,15 @@ export class AIChat extends LitElement {
     .message.user .message-content {
       background: var(--user-message-bg, #D6E4FF);
       color: #1a1a1a;
-      border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
+      border-radius: 1.25rem 0.25rem 1.25rem 1.25rem;
+      max-width: 26rem;
+      margin-left: auto;
     }
 
     .message.assistant .message-content {
       background: var(--bot-message-bg, #F5F5F5);
       color: #1a1a1a;
-      border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
+      border-radius: 0.25rem 1.25rem 1.25rem 1.25rem;
     }
 
     :host([theme="dark"]) .message.user .message-content {
