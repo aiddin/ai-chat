@@ -204,6 +204,10 @@ declare class AIChat extends LitElement {
     clearChat(): void;
     private lightenColor;
     private getStorageKey;
+    private getPendingRequestKey;
+    private savePendingRequest;
+    private loadPendingRequest;
+    private clearPendingRequest;
     private saveMessagesToStorage;
     private loadMessagesFromStorage;
     private clearMessagesFromStorage;
@@ -216,6 +220,7 @@ declare class AIChat extends LitElement {
      * - Objects with question_text (legacy format)
      * - Objects with Id/QuestionType (new API format - question_text will be fetched)
      * - String arrays (legacy format)
+     * - Nested format with question and related_questions (new API format - only extracts main questions)
      */
     private normalizeSuggestedQuestions;
     private handleInput;

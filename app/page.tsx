@@ -18,7 +18,7 @@ export default function Home() {
       <ai-chat
         ref={chatRef}
         api-url={apiUrl}
-        session-id="asd123123"
+        session-id="asdasdasdqweqwazsdasdasd"
         title="AI Assistant"
         theme="light"
         mode="widget"

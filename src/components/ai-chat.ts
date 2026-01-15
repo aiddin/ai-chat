@@ -5,7 +5,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import MarkdownIt from 'markdown-it';
 
-console.log('Chatbot Ver = 0.2.21-beta.2');
+console.log('Chatbot Ver = 0.2.24-beta.0');
 const md = new MarkdownIt({
   html: false, // Disable HTML tags in source for security
   breaks: true, // Convert '\n' in paragraphs into <br>
@@ -1166,6 +1166,47 @@ export class AIChat extends LitElement {
     return `ai-chat-messages-${this.sessionId}`;
   }
 
+  private getPendingRequestKey(): string {
+    return `ai-chat-pending-${this.sessionId}`;
+  }
+
+  private savePendingRequest(question: string, type: 'ask' | 'suggested' = 'ask', questionData?: any): void {
+    try {
+      const pendingRequest = {
+        question,
+        type,
+        questionData,
+        timestamp: Date.now(),
+      };
+      const key = this.getPendingRequestKey();
+      localStorage.setItem(key, JSON.stringify(pendingRequest));
+    } catch (error) {
+      console.warn('Failed to save pending request to localStorage:', error);
+    }
+  }
+
+  private loadPendingRequest(): { question: string; type: 'ask' | 'suggested'; questionData?: any; timestamp: number } | null {
+    try {
+      const key = this.getPendingRequestKey();
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.warn('Failed to load pending request from localStorage:', error);
+    }
+    return null;
+  }
+
+  private clearPendingRequest(): void {
+    try {
+      const key = this.getPendingRequestKey();
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.warn('Failed to clear pending request from localStorage:', error);
+    }
+  }
+
   private saveMessagesToStorage(): void {
     try {
       const storageKey = this.getStorageKey();
@@ -1294,6 +1335,27 @@ export class AIChat extends LitElement {
         }];
       }
     }
+
+    // Check for pending requests (page was refreshed while waiting for response)
+    const pendingRequest = this.loadPendingRequest();
+    if (pendingRequest) {
+      // Remove any error messages that might have been saved before the refresh
+      const messagesWithoutErrors = this.messages.filter(msg => {
+        // Remove the last assistant message if it's an error message
+        if (msg.role === 'assistant' && msg.content === this.errorMessage) {
+          return false;
+        }
+        return true;
+      });
+
+      this.messages = messagesWithoutErrors;
+
+      // Automatically retry the pending request after a short delay
+      // The user message is already in the chat history, so we only need to make the API call
+      setTimeout(() => {
+        this.retryPendingRequest(pendingRequest);
+      }, 500);
+    }
   }
 
   updated(changedProperties: PropertyValues) {
@@ -1322,10 +1384,32 @@ export class AIChat extends LitElement {
    * - Objects with question_text (legacy format)
    * - Objects with Id/QuestionType (new API format - question_text will be fetched)
    * - String arrays (legacy format)
+   * - Nested format with question and related_questions (new API format - only extracts main questions)
    */
   private normalizeSuggestedQuestions(questions: any): SuggestedQuestion[] | undefined {
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
       return undefined;
+    }
+
+    // Check if this is the new nested format with 'question' and 'related_questions'
+    // Only extract the main questions, not the related questions
+    // Related questions will be shown when a user clicks on a suggested question
+    if (typeof questions[0] === 'object' && questions[0].question && questions[0].related_questions) {
+      const mainQuestions: SuggestedQuestion[] = [];
+
+      questions.forEach((item: any) => {
+        // Add only the main question (not related questions)
+        if (item.question) {
+          mainQuestions.push({
+            id: item.question.id,
+            question_type: item.question.question_type,
+            question_text: item.question.question_text,
+            category: item.question.category,
+          });
+        }
+      });
+
+      return mainQuestions.length > 0 ? mainQuestions : undefined;
     }
 
     // If already objects with question_text, return as-is
@@ -1442,7 +1526,7 @@ export class AIChat extends LitElement {
     return results.filter((q): q is SuggestedQuestion => q !== null);
   }
 
-  private async handleFAQClick(question: SuggestedQuestion) {
+  private async handleFAQClick(question: SuggestedQuestion, event?: Event) {
     if (this.isLoading) return;
 
     // Check if this is a suggested question with ID (new format with capitalized fields or old format)
@@ -1456,6 +1540,277 @@ export class AIChat extends LitElement {
       // Create a synthetic submit event
       const submitEvent = new Event('submit', { cancelable: true });
       this.handleSubmit(submitEvent);
+    }
+  }
+
+  /**
+   * Retry a pending request without adding duplicate user messages
+   * The user message is already in the chat history from before the interruption
+   */
+  private async retryPendingRequest(pendingRequest: { question: string; type: 'ask' | 'suggested'; questionData?: any; timestamp: number }) {
+    this.isLoading = true;
+
+    if (pendingRequest.type === 'suggested' && pendingRequest.questionData) {
+      // Retry suggested question - call API directly without adding user message
+      try {
+        const { questionId, questionType } = pendingRequest.questionData;
+
+        let baseUrl = '';
+        if (this.initialQuestionsUrl) {
+          try {
+            const urlObj = new URL(this.initialQuestionsUrl);
+            baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+          } catch {
+            baseUrl = 'http://43.217.183.120:8080';
+          }
+        } else {
+          baseUrl = 'http://43.217.183.120:8080';
+        }
+
+        const url = `${baseUrl}/api/questions/${questionId}?question_type=${questionType}&language=${this.language}`;
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Backend error: ${response.status} ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        let responseText = 'No response from agent';
+        let suggestedQuestions: SuggestedQuestion[] | undefined = undefined;
+
+        if (data && typeof data === 'object') {
+          if (data.question && data.question.answer_text) {
+            responseText = data.question.answer_text;
+          }
+
+          if (data.related_questions && Array.isArray(data.related_questions) && data.related_questions.length > 0) {
+            if (typeof data.related_questions[0] === 'object' && data.related_questions[0].question_text) {
+              suggestedQuestions = data.related_questions.map((q: any) => ({
+                id: q.id,
+                question_type: q.question_type,
+                question_text: q.question_text,
+                category: q.category
+              }));
+            }
+          }
+        }
+
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: responseText,
+          suggestedQuestions: suggestedQuestions,
+        };
+
+        this.messages = [...this.messages, assistantMessage];
+        this.clearPendingRequest();
+
+        this.dispatchEvent(new CustomEvent('response-received', {
+          detail: assistantMessage,
+          bubbles: true,
+          composed: true,
+        }));
+      } catch (err) {
+        console.error('Retry suggested question API failed:', err);
+
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: this.errorMessage,
+        };
+
+        this.messages = [...this.messages, errorMessage];
+
+        this.dispatchEvent(new CustomEvent('error', {
+          detail: err,
+          bubbles: true,
+          composed: true,
+        }));
+      } finally {
+        this.isLoading = false;
+      }
+    } else {
+      // Retry regular ask question - call API directly without adding user message
+      try {
+        const response = await fetch(`${this.apiUrl}/ask`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: this.sessionId,
+            question: pendingRequest.question,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Backend error: ${response.status} ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        let responseText = 'No response from agent';
+        let faqs: FAQ[] | undefined = undefined;
+        let suggestedQuestions: SuggestedQuestion[] | undefined = undefined;
+        let confidence: Confidence | undefined = undefined;
+        let responseLanguage: string | undefined = undefined;
+
+        if (data && typeof data === 'object' && data.response && typeof data.response === 'string') {
+          const trimmedResponse = data.response.trim();
+          if (trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[')) {
+            try {
+              const innerData = JSON.parse(data.response);
+
+              if (innerData && innerData.response && typeof innerData.response === 'string') {
+                responseText = innerData.response;
+                faqs = innerData.faq_used || innerData.faqs_used || undefined;
+                suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
+                confidence = innerData.confident || innerData.confidence || 'true';
+                responseLanguage = innerData.language || undefined;
+              } else {
+                responseText = data.response;
+                faqs = data.faq_used || data.faqs_used || undefined;
+                suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
+                confidence = data.confident || data.confidence || undefined;
+                responseLanguage = data.language || undefined;
+              }
+            } catch (parseError) {
+              const responsePattern = /"response"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/s;
+              const responseMatch = data.response.match(responsePattern);
+
+              if (responseMatch) {
+                responseText = responseMatch[1]
+                  .replace(/\\n/g, '\n')
+                  .replace(/\\t/g, '\t')
+                  .replace(/\\r/g, '\r')
+                  .replace(/\\"/g, '"')
+                  .replace(/\\\\/g, '\\');
+              } else {
+                responseText = 'Error: Could not parse response';
+              }
+
+              const faqsPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[^\]]*\])/s;
+              const faqsMatch = data.response.match(faqsPattern);
+
+              if (faqsMatch) {
+                try {
+                  faqs = JSON.parse(faqsMatch[1]);
+                } catch {
+                  const faqsMultiPattern = /"(?:faq_used|faqs_used)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+                  const faqsMultiMatch = data.response.match(faqsMultiPattern);
+                  if (faqsMultiMatch) {
+                    try {
+                      faqs = JSON.parse(faqsMultiMatch[1]);
+                    } catch {
+                      faqs = undefined;
+                    }
+                  }
+                }
+              }
+
+              const suggestedPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[^\]]*\])/s;
+              const suggestedMatch = data.response.match(suggestedPattern);
+
+              if (suggestedMatch) {
+                try {
+                  const parsedQuestions = JSON.parse(suggestedMatch[1]);
+                  suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
+                } catch {
+                  const suggestedMultiPattern = /"(?:suggested_follow_ups|suggested_questions)"\s*:\s*(\[[\s\S]*?\n\s*\])/;
+                  const suggestedMultiMatch = data.response.match(suggestedMultiPattern);
+                  if (suggestedMultiMatch) {
+                    try {
+                      const parsedQuestions = JSON.parse(suggestedMultiMatch[1]);
+                      suggestedQuestions = this.normalizeSuggestedQuestions(parsedQuestions);
+                    } catch {
+                      suggestedQuestions = undefined;
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            responseText = data.response;
+            faqs = data.faq_used || data.faqs_used || undefined;
+            suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
+            confidence = data.confident || data.confidence || undefined;
+            responseLanguage = data.language || undefined;
+          }
+        } else if (typeof data === 'string') {
+          responseText = data;
+        } else if (data && typeof data === 'object') {
+          responseText = data.message || data.answer || 'Error: Unexpected response format';
+          faqs = data.faq_used || data.faqs_used || undefined;
+          suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
+          confidence = data.confident || data.confidence || undefined;
+          responseLanguage = data.language || undefined;
+        }
+
+        if (suggestedQuestions && suggestedQuestions.length > 0) {
+          const questionsNeedingText = suggestedQuestions.filter(q =>
+            (q.Id || q.id) && (q.QuestionType || q.question_type) && !q.question_text
+          );
+
+          if (questionsNeedingText.length > 0) {
+            const questionsToFetch = questionsNeedingText.map(q => ({
+              Id: (q.Id || q.id?.toString()) as string,
+              QuestionType: (q.QuestionType || q.question_type) as string
+            }));
+
+            const fetchedQuestions = await this.fetchQuestionTexts(questionsToFetch);
+
+            suggestedQuestions = [
+              ...suggestedQuestions.filter(q => q.question_text),
+              ...fetchedQuestions
+            ];
+          }
+        }
+
+        if (responseLanguage) {
+          this.language = responseLanguage;
+        }
+
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: responseText,
+          faqs: faqs,
+          suggestedQuestions: suggestedQuestions,
+          confidence: confidence,
+        };
+
+        this.messages = [...this.messages, assistantMessage];
+        this.clearPendingRequest();
+
+        this.dispatchEvent(new CustomEvent('response-received', {
+          detail: assistantMessage,
+          bubbles: true,
+          composed: true,
+        }));
+      } catch (err) {
+        console.error('Retry backend connection failed:', err);
+
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: this.errorMessage,
+        };
+
+        this.messages = [...this.messages, errorMessage];
+
+        this.dispatchEvent(new CustomEvent('error', {
+          detail: err,
+          bubbles: true,
+          composed: true,
+        }));
+      } finally {
+        this.isLoading = false;
+      }
     }
   }
 
@@ -1474,6 +1829,9 @@ export class AIChat extends LitElement {
 
     this.messages = [...this.messages, userMessage];
     this.isLoading = true;
+
+    // Save pending request to sessionStorage
+    this.savePendingRequest(question.question_text, 'suggested', { questionId, questionType });
 
     // Dispatch message-sent event
     this.dispatchEvent(new CustomEvent('message-sent', {
@@ -1498,7 +1856,7 @@ export class AIChat extends LitElement {
         baseUrl = 'http://43.217.183.120:8080';
       }
 
-      const url = `${baseUrl}/api/questions/${questionId}?question_type=${questionType}`;
+      const url = `${baseUrl}/api/questions/${questionId}?question_type=${questionType}&language=${this.language}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -1544,6 +1902,9 @@ export class AIChat extends LitElement {
 
       this.messages = [...this.messages, assistantMessage];
 
+      // Clear pending request only on success
+      this.clearPendingRequest();
+
       // Dispatch response-received event
       this.dispatchEvent(new CustomEvent('response-received', {
         detail: assistantMessage,
@@ -1560,6 +1921,8 @@ export class AIChat extends LitElement {
       };
 
       this.messages = [...this.messages, errorMessage];
+
+      // DON'T clear pending request on error - keep it for retry
 
       // Dispatch error event
       this.dispatchEvent(new CustomEvent('error', {
@@ -1588,6 +1951,9 @@ export class AIChat extends LitElement {
     this.input = '';
     this.isLoading = true;
 
+    // Save pending request to sessionStorage
+    this.savePendingRequest(questionText, 'ask');
+
     // Dispatch message-sent event
     this.dispatchEvent(new CustomEvent('message-sent', {
       detail: userMessage,
@@ -1612,11 +1978,12 @@ export class AIChat extends LitElement {
 
       const data = await response.json();
 
-      // Extract the response text, FAQs, suggested questions, and confidence
+      // Extract the response text, FAQs, suggested questions, confidence, and language
       let responseText = 'No response from agent';
       let faqs: FAQ[] | undefined = undefined;
       let suggestedQuestions: SuggestedQuestion[] | undefined = undefined;
       let confidence: Confidence | undefined = undefined;
+      let responseLanguage: string | undefined = undefined;
 
       if (data && typeof data === 'object' && data.response && typeof data.response === 'string') {
         // Check if data.response contains stringified JSON
@@ -1631,11 +1998,13 @@ export class AIChat extends LitElement {
               faqs = innerData.faq_used || innerData.faqs_used || undefined;
               suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
               confidence = innerData.confident || innerData.confidence || 'true';
+              responseLanguage = innerData.language || undefined;
             } else {
               responseText = data.response;
               faqs = data.faq_used || data.faqs_used || undefined;
               suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
               confidence = data.confident || data.confidence || undefined;
+              responseLanguage = data.language || undefined;
             }
           } catch (parseError) {
             // Backend has malformed JSON - extract response text
@@ -1702,6 +2071,7 @@ export class AIChat extends LitElement {
           faqs = data.faq_used || data.faqs_used || undefined;
           suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
           confidence = data.confident || data.confidence || undefined;
+          responseLanguage = data.language || undefined;
         }
       } else if (typeof data === 'string') {
         responseText = data;
@@ -1711,6 +2081,7 @@ export class AIChat extends LitElement {
         faqs = data.faq_used || data.faqs_used || undefined;
         suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
         confidence = data.confident || data.confidence || undefined;
+        responseLanguage = data.language || undefined;
       }
 
       // Handle new suggested_questions format: if questions have Id/QuestionType but no question_text, fetch them
@@ -1737,6 +2108,11 @@ export class AIChat extends LitElement {
         }
       }
 
+      // Update the component's language if the API returned a language
+      if (responseLanguage) {
+        this.language = responseLanguage;
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -1747,6 +2123,9 @@ export class AIChat extends LitElement {
       };
 
       this.messages = [...this.messages, assistantMessage];
+
+      // Clear pending request only on success
+      this.clearPendingRequest();
 
       // Dispatch response-received event
       this.dispatchEvent(new CustomEvent('response-received', {
@@ -1764,6 +2143,8 @@ export class AIChat extends LitElement {
       };
 
       this.messages = [...this.messages, errorMessage];
+
+      // DON'T clear pending request on error - keep it for retry
 
       // Dispatch error event
       this.dispatchEvent(new CustomEvent('error', {
@@ -1832,7 +2213,7 @@ export class AIChat extends LitElement {
                       <p class="faq-title">Cadangan Soalan:</p>
                       <ul class="faq-list">
                         ${msg.suggestedQuestions.map(question => html`
-                          <li class="faq-item" @click=${() => this.handleFAQClick(question)}>
+                          <li class="faq-item" @click=${(e: Event) => this.handleFAQClick(question, e)}>
                             ${question.question_text}
                           </li>
                         `)}

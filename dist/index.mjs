@@ -5371,7 +5371,7 @@ MarkdownIt.prototype.renderInline = function(src, env) {
 var lib_default = MarkdownIt;
 
 // src/components/ai-chat.ts
-console.log("Chatbot Ver = 0.2.21-beta.2");
+console.log("Chatbot Ver = 0.2.24-beta.0");
 var md = new lib_default({
   html: false,
   // Disable HTML tags in source for security
@@ -5447,6 +5447,43 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
   }
   getStorageKey() {
     return `ai-chat-messages-${this.sessionId}`;
+  }
+  getPendingRequestKey() {
+    return `ai-chat-pending-${this.sessionId}`;
+  }
+  savePendingRequest(question, type = "ask", questionData) {
+    try {
+      const pendingRequest = {
+        question,
+        type,
+        questionData,
+        timestamp: Date.now()
+      };
+      const key = this.getPendingRequestKey();
+      localStorage.setItem(key, JSON.stringify(pendingRequest));
+    } catch (error2) {
+      console.warn("Failed to save pending request to localStorage:", error2);
+    }
+  }
+  loadPendingRequest() {
+    try {
+      const key = this.getPendingRequestKey();
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error2) {
+      console.warn("Failed to load pending request from localStorage:", error2);
+    }
+    return null;
+  }
+  clearPendingRequest() {
+    try {
+      const key = this.getPendingRequestKey();
+      localStorage.removeItem(key);
+    } catch (error2) {
+      console.warn("Failed to clear pending request from localStorage:", error2);
+    }
   }
   saveMessagesToStorage() {
     try {
@@ -5545,6 +5582,41 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
         }];
       }
     }
+    const pendingRequest = this.loadPendingRequest();
+    if (pendingRequest) {
+      const messagesWithoutErrors = this.messages.filter((msg) => {
+        if (msg.role === "assistant" && msg.content === this.errorMessage) {
+          return false;
+        }
+        return true;
+      });
+      const lastMessage = messagesWithoutErrors[messagesWithoutErrors.length - 1];
+      const isRetryMessage = lastMessage && lastMessage.role === "assistant" && lastMessage.content.includes("Nampaknya permintaan sebelumnya terganggu");
+      if (!isRetryMessage) {
+        const isUserMessageLast = lastMessage && lastMessage.role === "user";
+        if (isUserMessageLast || messagesWithoutErrors.length === 0) {
+          const interruptedMessage = {
+            id: "interrupted-" + Date.now(),
+            role: "assistant",
+            content: "Nampaknya permintaan sebelumnya terganggu. Adakah anda ingin cuba lagi?",
+            suggestedQuestions: [{
+              question_text: `\u{1F504} Cuba semula: "${pendingRequest.question}"`
+            }]
+          };
+          this.messages = [...messagesWithoutErrors, interruptedMessage];
+        } else {
+          this.messages = messagesWithoutErrors;
+        }
+      } else {
+        this.messages = messagesWithoutErrors;
+      }
+      setTimeout(() => {
+        const lastSuggestion = this.shadowRoot?.querySelector(".faq-item");
+        if (lastSuggestion) {
+          lastSuggestion._pendingRetry = pendingRequest;
+        }
+      }, 100);
+    }
   }
   updated(changedProperties) {
     super.updated(changedProperties);
@@ -5567,10 +5639,25 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
    * - Objects with question_text (legacy format)
    * - Objects with Id/QuestionType (new API format - question_text will be fetched)
    * - String arrays (legacy format)
+   * - Nested format with question and related_questions (new API format - only extracts main questions)
    */
   normalizeSuggestedQuestions(questions) {
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
       return void 0;
+    }
+    if (typeof questions[0] === "object" && questions[0].question && questions[0].related_questions) {
+      const mainQuestions = [];
+      questions.forEach((item) => {
+        if (item.question) {
+          mainQuestions.push({
+            id: item.question.id,
+            question_type: item.question.question_type,
+            question_text: item.question.question_text,
+            category: item.question.category
+          });
+        }
+      });
+      return mainQuestions.length > 0 ? mainQuestions : void 0;
     }
     if (typeof questions[0] === "object" && questions[0].question_text) {
       return questions;
@@ -5663,8 +5750,26 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
     const results = await Promise.all(fetchPromises);
     return results.filter((q) => q !== null);
   }
-  async handleFAQClick(question) {
+  async handleFAQClick(question, event) {
     if (this.isLoading) return;
+    const target = event?.target;
+    if (target?._pendingRetry) {
+      const pendingRetry = target._pendingRetry;
+      const originalQuestion = pendingRetry.question;
+      if (pendingRetry.type === "suggested" && pendingRetry.questionData) {
+        const suggestedQuestion = {
+          question_text: originalQuestion,
+          id: pendingRetry.questionData.questionId,
+          question_type: pendingRetry.questionData.questionType
+        };
+        await this.handleSuggestedQuestionClick(suggestedQuestion);
+      } else {
+        this.input = originalQuestion;
+        const submitEvent = new Event("submit", { cancelable: true });
+        this.handleSubmit(submitEvent);
+      }
+      return;
+    }
     if (question.Id && question.QuestionType || question.id && question.question_type) {
       await this.handleSuggestedQuestionClick(question);
     } else {
@@ -5684,6 +5789,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
     };
     this.messages = [...this.messages, userMessage];
     this.isLoading = true;
+    this.savePendingRequest(question.question_text, "suggested", { questionId, questionType });
     this.dispatchEvent(new CustomEvent("message-sent", {
       detail: userMessage,
       bubbles: true,
@@ -5701,7 +5807,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       } else {
         baseUrl = "http://43.217.183.120:8080";
       }
-      const url = `${baseUrl}/api/questions/${questionId}?question_type=${questionType}`;
+      const url = `${baseUrl}/api/questions/${questionId}?question_type=${questionType}&language=${this.language}`;
       const response = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" }
@@ -5735,6 +5841,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
         suggestedQuestions
       };
       this.messages = [...this.messages, assistantMessage];
+      this.clearPendingRequest();
       this.dispatchEvent(new CustomEvent("response-received", {
         detail: assistantMessage,
         bubbles: true,
@@ -5769,6 +5876,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
     const questionText = this.input.trim();
     this.input = "";
     this.isLoading = true;
+    this.savePendingRequest(questionText, "ask");
     this.dispatchEvent(new CustomEvent("message-sent", {
       detail: userMessage,
       bubbles: true,
@@ -5792,6 +5900,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       let faqs = void 0;
       let suggestedQuestions = void 0;
       let confidence = void 0;
+      let responseLanguage = void 0;
       if (data && typeof data === "object" && data.response && typeof data.response === "string") {
         const trimmedResponse = data.response.trim();
         if (trimmedResponse.startsWith("{") || trimmedResponse.startsWith("[")) {
@@ -5802,11 +5911,13 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
               faqs = innerData.faq_used || innerData.faqs_used || void 0;
               suggestedQuestions = this.normalizeSuggestedQuestions(innerData.suggested_follow_ups || innerData.suggested_questions);
               confidence = innerData.confident || innerData.confidence || "true";
+              responseLanguage = innerData.language || void 0;
             } else {
               responseText = data.response;
               faqs = data.faq_used || data.faqs_used || void 0;
               suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
               confidence = data.confident || data.confidence || void 0;
+              responseLanguage = data.language || void 0;
             }
           } catch (parseError) {
             const responsePattern = /"response"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/s;
@@ -5858,6 +5969,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
           faqs = data.faq_used || data.faqs_used || void 0;
           suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
           confidence = data.confident || data.confidence || void 0;
+          responseLanguage = data.language || void 0;
         }
       } else if (typeof data === "string") {
         responseText = data;
@@ -5866,6 +5978,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
         faqs = data.faq_used || data.faqs_used || void 0;
         suggestedQuestions = this.normalizeSuggestedQuestions(data.suggested_follow_ups || data.suggested_questions);
         confidence = data.confident || data.confidence || void 0;
+        responseLanguage = data.language || void 0;
       }
       if (suggestedQuestions && suggestedQuestions.length > 0) {
         const questionsNeedingText = suggestedQuestions.filter(
@@ -5885,6 +5998,9 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
           ];
         }
       }
+      if (responseLanguage) {
+        this.language = responseLanguage;
+      }
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -5894,6 +6010,7 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
         confidence
       };
       this.messages = [...this.messages, assistantMessage];
+      this.clearPendingRequest();
       this.dispatchEvent(new CustomEvent("response-received", {
         detail: assistantMessage,
         bubbles: true,
@@ -5935,64 +6052,60 @@ ${this.welcomeSubtitle}` : this.welcomeMessage;
       <div class="messages-area" style="--user-message-bg: ${this.userMessageBg}; --bot-message-bg: ${this.botMessageBg}; --primary-color: ${this.primaryColor}; --primary-color-light: ${primaryColorLight}; --primary-color-hover: ${this.primaryColorHover}; ${this.backgroundImageUrl ? `--background-image-url: url('${this.backgroundImageUrl}');` : ""}">
         <div class="messages-container">
           ${repeat(this.messages, (msg) => msg.id, (msg) => html`
-            <div
-              class=${classMap({
+            <div>
+              <div
+                class=${classMap({
       message: true,
       user: msg.role === "user",
       assistant: msg.role === "assistant"
     })}
-            >
-              <div class="avatar">
-                ${msg.role === "user" ? this.userAvatarUrl ? html`<img src="${this.userAvatarUrl}" alt="User" class="avatar-image" />` : html`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                      </svg>` : this.botAvatarUrl ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />` : "AI"}
-              </div>
-              <div class="message-content">
-                <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
-                ${msg.role === "assistant" && msg.confidence && !msg.confidence.is_confident ? html`
-                  <div class="low-confidence-warning">
-                    <svg class="warning-icon" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                    </svg>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                      <span>${this.lowConfidenceMessage}</span>
-                      <a
-                        href="${this.contactSupportUrl}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="contact-support-button"
-                        style="--primary-color: ${this.primaryColor}; --primary-color-hover: ${this.primaryColorHover};"
-                      >
-                        ${this.contactSupportMessage}
-                      </a>
+              >
+                ${msg.role === "assistant" ? html`
+                  <div class="avatar">
+                    ${this.botAvatarUrl ? html`<img src="${this.botAvatarUrl}" alt="AI" class="avatar-image" />` : "AI"}
+                  </div>
+                ` : ""}
+                <div class="message-content">
+                  <div class="message-text">${unsafeHTML(this.formatMessageContent(msg.content))}</div>
+                  ${msg.role === "assistant" && this.showRelatedFaqs && msg.faqs && msg.faqs.length > 0 ? html`
+                    <div class="faq-section">
+                      <p class="faq-title">Related FAQs:</p>
+                      <ul class="faq-list">
+                        ${msg.faqs.map((faq) => html`
+                          <li class="faq-item-static">
+                            ${faq.Question}
+                          </li>
+                        `)}
+                      </ul>
                     </div>
-                  </div>
-                ` : ""}
-                ${msg.role === "assistant" && this.showRelatedFaqs && msg.faqs && msg.faqs.length > 0 ? html`
-                  <div class="faq-section">
-                    <p class="faq-title">Related FAQs:</p>
-                    <ul class="faq-list">
-                      ${msg.faqs.map((faq) => html`
-                        <li class="faq-item-static">
-                          ${faq.Question}
-                        </li>
-                      `)}
-                    </ul>
-                  </div>
-                ` : ""}
-                ${msg.role === "assistant" && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? html`
-                  <div class="faq-section">
-                    <p class="faq-title">Cadangan Soalan:</p>
-                    <ul class="faq-list">
-                      ${msg.suggestedQuestions.map((question) => html`
-                        <li class="faq-item" @click=${() => this.handleFAQClick(question)}>
-                          ${question.question_text}
-                        </li>
-                      `)}
-                    </ul>
-                  </div>
-                ` : ""}
+                  ` : ""}
+                  ${msg.role === "assistant" && msg.suggestedQuestions && msg.suggestedQuestions.length > 0 ? html`
+                    <div class="faq-section">
+                      <p class="faq-title">Cadangan Soalan:</p>
+                      <ul class="faq-list">
+                        ${msg.suggestedQuestions.map((question) => html`
+                          <li class="faq-item" @click=${(e) => this.handleFAQClick(question, e)}>
+                            ${question.question_text}
+                          </li>
+                        `)}
+                      </ul>
+                    </div>
+                  ` : ""}
+                </div>
               </div>
+              ${msg.role === "assistant" && msg.confidence && !msg.confidence.is_confident ? html`
+                <div class="contact-support-wrapper">
+                  <a
+                    href="${this.contactSupportUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="contact-support-button"
+                    style="--primary-color: ${this.primaryColor}; --primary-color-hover: ${this.primaryColorHover};"
+                  >
+                    ${this.contactSupportMessage}
+                  </a>
+                </div>
+              ` : ""}
             </div>
           `)}
 
@@ -6244,6 +6357,10 @@ AIChat.styles = css`
 
     /* Mobile responsive styles for all modes */
     @media (max-width: 768px) {
+      .contact-support-wrapper {
+        margin-left: 2.75rem;
+      }
+
       .header {
         padding: 0.875rem 1rem;
       }
@@ -6265,6 +6382,14 @@ AIChat.styles = css`
         gap: 0.75rem;
       }
 
+      .message.user {
+        margin-left: 3.5rem;
+      }
+
+      .message.assistant {
+        margin-right: 2.75rem;
+      }
+
       .avatar {
         width: 2rem;
         height: 2rem;
@@ -6274,6 +6399,11 @@ AIChat.styles = css`
       .message-content {
         max-width: 100%;
         font-size: 0.9375rem;
+        padding: 0.875rem 1.25rem;
+      }
+
+      .message.user .message-content {
+        max-width: 85%;
       }
 
       .empty-state {
@@ -6323,6 +6453,10 @@ AIChat.styles = css`
 
     /* Extra small screens */
     @media (max-width: 480px) {
+      .contact-support-wrapper {
+        margin-left: 2.25rem;
+      }
+
       .header {
         padding: 0.75rem 0.875rem;
       }
@@ -6344,6 +6478,14 @@ AIChat.styles = css`
         gap: 0.5rem;
       }
 
+      .message.user {
+        margin-left: 3rem;
+      }
+
+      .message.assistant {
+        margin-right: 2.25rem;
+      }
+
       .avatar {
         width: 1.75rem;
         height: 1.75rem;
@@ -6351,9 +6493,13 @@ AIChat.styles = css`
       }
 
       .message-content {
-        padding: 0.5rem 0.75rem;
+        padding: 0.75rem 1rem;
         font-size: 0.875rem;
         border-radius: 0.75rem;
+      }
+
+      .message.user .message-content {
+        max-width: 80%;
       }
 
       .empty-state {
@@ -6549,6 +6695,12 @@ AIChat.styles = css`
 
     .message.user {
       flex-direction: row-reverse;
+      justify-content: flex-end;
+      margin-left: 5rem;
+    }
+
+    .message.assistant {
+      margin-right: 3.5rem;
     }
 
     .avatar {
@@ -6579,7 +6731,7 @@ AIChat.styles = css`
 
     .message-content {
       max-width: 36rem;
-      padding: 1.125rem;
+      padding: 1rem 1.5rem;
       border-radius: 1.25rem;
       line-height: 1.6;
       overflow-wrap: break-word;
@@ -6590,13 +6742,15 @@ AIChat.styles = css`
     .message.user .message-content {
       background: var(--user-message-bg, #D6E4FF);
       color: #1a1a1a;
-      border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
+      border-radius: 1.25rem 0.25rem 1.25rem 1.25rem;
+      max-width: 26rem;
+      margin-left: auto;
     }
 
     .message.assistant .message-content {
       background: var(--bot-message-bg, #F5F5F5);
       color: #1a1a1a;
-      border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
+      border-radius: 0.25rem 1.25rem 1.25rem 1.25rem;
     }
 
     :host([theme="dark"]) .message.user .message-content {
@@ -6814,36 +6968,46 @@ AIChat.styles = css`
       color: #FCD34D;
     }
 
+    .contact-support-wrapper {
+      display: flex;
+      justify-content: flex-start;
+      margin-top: 0.75rem;
+      margin-left: 3.5rem;
+    }
+
     .contact-support-button {
-      margin-top: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: var(--primary-color, #3681D3);
-      color: #fff;
-      border: none;
-      border-radius: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      background: transparent;
+      color: var(--primary-color, #3681D3);
+      border: 1.5px solid var(--primary-color, #3681D3);
+      border-radius: 1.5rem;
       font-size: 0.875rem;
       font-weight: 500;
       cursor: pointer;
-      transition: background-color 0.2s, transform 0.1s;
+      transition: all 0.2s ease;
       display: inline-block;
       text-decoration: none;
+      white-space: nowrap;
     }
 
     .contact-support-button:hover {
-      background: var(--primary-color-hover, #3457C7);
-      transform: translateY(-1px);
+      background: var(--primary-color, #3681D3);
+      color: #fff;
     }
 
     .contact-support-button:active {
-      transform: translateY(0);
+      transform: scale(0.98);
     }
 
     :host([theme="dark"]) .contact-support-button {
-      background: var(--primary-color, #3681D3);
+      background: transparent;
+      color: var(--primary-color-light, #5B7FE8);
+      border-color: var(--primary-color-light, #5B7FE8);
     }
 
     :host([theme="dark"]) .contact-support-button:hover {
-      background: var(--primary-color-hover, #3457C7);
+      background: var(--primary-color-light, #5B7FE8);
+      color: #18181b;
     }
 
     .loading {

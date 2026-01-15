@@ -77,6 +77,10 @@
         },
         {
           "kind": "variable",
+          "name": "type"
+        },
+        {
+          "kind": "variable",
           "name": "suggestedQuestions",
           "default": "void 0"
         }
@@ -875,6 +879,68 @@
             },
             {
               "kind": "method",
+              "name": "getPendingRequestKey",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "string"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "savePendingRequest",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "void"
+                }
+              },
+              "parameters": [
+                {
+                  "name": "question",
+                  "type": {
+                    "text": "string"
+                  }
+                },
+                {
+                  "name": "type",
+                  "default": "'ask'",
+                  "type": {
+                    "text": "'ask' | 'suggested'"
+                  }
+                },
+                {
+                  "name": "questionData",
+                  "optional": true,
+                  "type": {
+                    "text": "any"
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "method",
+              "name": "loadPendingRequest",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "{ question: string; type: 'ask' | 'suggested'; questionData?: any; timestamp: number } | null"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "name": "clearPendingRequest",
+              "privacy": "private",
+              "return": {
+                "type": {
+                  "text": "void"
+                }
+              }
+            },
+            {
+              "kind": "method",
               "name": "saveMessagesToStorage",
               "privacy": "private",
               "return": {
@@ -943,7 +1009,7 @@
                   }
                 }
               ],
-              "description": "Normalize suggested questions - handles multiple formats:\r\n- Objects with question_text (legacy format)\r\n- Objects with Id/QuestionType (new API format - question_text will be fetched)\r\n- String arrays (legacy format)"
+              "description": "Normalize suggested questions - handles multiple formats:\r\n- Objects with question_text (legacy format)\r\n- Objects with Id/QuestionType (new API format - question_text will be fetched)\r\n- String arrays (legacy format)\r\n- Nested format with question and related_questions (new API format - only extracts main questions)"
             },
             {
               "kind": "method",
@@ -987,6 +1053,13 @@
                   "name": "question",
                   "type": {
                     "text": "SuggestedQuestion"
+                  }
+                },
+                {
+                  "name": "event",
+                  "optional": true,
+                  "type": {
+                    "text": "Event"
                   }
                 }
               ]
